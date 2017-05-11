@@ -1,9 +1,7 @@
 #!/bin/bash
-# 
-# Web Server Cloud Backups
+# Web Server Cloud Backups Main Script
 # Author: zEvilz
 # License: MIT
-# 
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
