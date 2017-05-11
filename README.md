@@ -78,3 +78,8 @@ Add lines in root crontab like below
 If you want receive script result to email add below to the top of crontab list (require working MTA on your server)
 
     MAILTO=name@domain.com
+
+Changelog
+---------
+
+11.05.2017 - 1.0 - released
