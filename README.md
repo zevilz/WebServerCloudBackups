@@ -18,12 +18,12 @@ Configuring
 
 4. Declare main vars in **backup.conf**
 
-  - **MYSQL_PASS** - MySQL/MariaDB root password;
-  - **CLOUD_USER** - login for your cloud;
-  - **CLOUD_PASS** - password for your cloud user;
-  - **CLOUD_PATH** - full path to cloud folder (ex.: https://webdav.yandex.ru/Backups/)
-  - **TMP_PATH** - path for temporary files on server (ex.: /tmp/)
-  - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to **false** it will be used this password. if project password set to **false** and this password set to **false** password not set to project archive.)
+- **MYSQL_PASS** - MySQL/MariaDB root password;
+- **CLOUD_USER** - login for your cloud;
+- **CLOUD_PASS** - password for your cloud user;
+- **CLOUD_PATH** - full path to cloud folder (ex.: https://webdav.yandex.ru/Backups/)
+- **TMP_PATH** - path for temporary files on server (ex.: /tmp/)
+- **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to **false** it will be used this password. if project password set to **false** and this password set to **false** password not set to project archive.)
 
 5. Add your projects after **declare -A projects** one per row like below:
 
@@ -38,10 +38,10 @@ Parameters in quotes must be written through spaces and all required.
 
 Parameters:
 
-  - project name (you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**)
-  - database name (type **false** if database backup is not required for project)
-  - full path to project folder (type **false** if files backup is not required for project)
-  - project archive password (type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**)
+- project name (you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**)
+- database name (type **false** if database backup is not required for project)
+- full path to project folder (type **false** if files backup is not required for project)
+- project archive password (type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**)
 
 Usage
 -----
@@ -56,14 +56,14 @@ Example:
 
 Supported backup types:
 
-  - files - backup projects folder
-  - bases - backup projects bases
+- files - backup projects folder
+- bases - backup projects bases
 
 Supported periods:
 
-  - daily - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
-  - weekly - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
-  - monthly - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
+- daily - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
+- weekly - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
+- monthly - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
 
 ### Cron
 
