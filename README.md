@@ -86,5 +86,5 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
-11.05.2017 - 1.0.0 - released
-13.05.2017 - 1.0.1 - main script code refactoring
+- 11.05.2017 - 1.0.0 - released
+- 13.05.2017 - 1.0.1 - main script code refactoring
