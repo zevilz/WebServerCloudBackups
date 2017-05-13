@@ -27,12 +27,16 @@ Configuring
 
 5. Add your projects after **declare -A projects** one per row like below:
 
-    projects[unique_key]="<project_name> <db_name> <project_folder> <project_archive_password>"
+```bash
+projects[unique_key]="<project_name> <db_name> <project_folder> <project_archive_password>"
+```
 
 Example:
 
-    projects[1]="domain.org false /home/user/www/domain.org false"
-    projects[2]="domain.com com_db /home/user/www/domain.com 1234"
+```bash
+projects[1]="domain.org false /home/user/www/domain.org false"
+projects[2]="domain.com com_db /home/user/www/domain.com 1234"
+```
 
 Parameters in quotes must be written through spaces and all required.
 
@@ -82,4 +86,5 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
-11.05.2017 - 1.0 - released
+11.05.2017 - 1.0.0 - released
+13.05.2017 - 1.0.1 - main script code refactoring
