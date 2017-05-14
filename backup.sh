@@ -2,7 +2,7 @@
 # Web Server Cloud Backups Main Script
 # Author: zEvilz
 # License: MIT
-# Version: 1.0.1
+# Version: 1.0.2
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -19,10 +19,10 @@ else
 	reset=$(tput sgr0)
 fi
 
-if [[ ! $# -eq 2 ]]
+if [[ ! $# -eq 2 && ! $# -eq 3 ]]
 then
 	echo "Wrong number of parameters!"
-	echo "Usage: bash $0 files|bases daily|weekly|monthly"
+	echo "Usage: bash $0 files|bases daily|weekly|monthly 0|1|3|5|7|9(optional)"
 	exit 1
 fi
 if [[ $1 != "files" && $1 != "bases" ]]
@@ -36,6 +36,19 @@ then
 	echo "Wrong period set!"
 	echo "Period must be set to \"daily\" or \"weekly\" or \"monthly\""
 	exit 1
+fi
+if [ $3 ]
+then
+	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]
+	then
+		echo "Wrong compression ratio set!"
+		echo "Compression ratio must be set to 0|1|3|5|7|9"
+		exit 1
+	else
+		COMPRESS_RATIO=$3
+	fi
+else
+	COMPRESS_RATIO=5
 fi
 
 # period time postfix
@@ -69,12 +82,12 @@ do
 		then
 			if [ $PROJECT_ARCHIVE_PASS != "false" ]
 			then
-				7z a -mx7 -mhe=on -p$PROJECT_ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
+				7z a -mx$COMPRESS_RATIO -mhe=on -p$PROJECT_ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
 			elif [ $GLOBAL_ARCHIVE_PASS != "false" ]
 			then
-				7z a -mx7 -mhe=on -p$GLOBAL_ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
+				7z a -mx$COMPRESS_RATIO -mhe=on -p$GLOBAL_ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
 			else
-				7z a -mx7 $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
+				7z a -mx$COMPRESS_RATIO $ARCHIVE_PATH $PROJECT_FOLDER > /dev/null
 			fi
 			if [ -f $ARCHIVE_PATH ]
 			then
@@ -103,6 +116,8 @@ do
 
 				# cleanup
 				unlink $ARCHIVE_PATH
+			else
+				echo "Try lower compress ratio."
 			fi
 		else
 			echo -n "Project folder not found!"
@@ -140,12 +155,12 @@ do
 			echo -n "Archiving..."
 			if [ $PROJECT_ARCHIVE_PASS != "false" ]
 			then
-				7z a -mx7 -mhe=on -p$PROJECT_ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+				7z a -mx$COMPRESS_RATIO -mhe=on -p$PROJECT_ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
 			elif [ $GLOBAL_ARCHIVE_PASS != "false" ]
 			then
-				7z a -mx7 -mhe=on -p$GLOBAL_ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+				7z a -mx$COMPRESS_RATIO -mhe=on -p$GLOBAL_ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
 			else
-				7z a -mx7 $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+				7z a -mx$COMPRESS_RATIO $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
 			fi
 			if [ -f $ARCHIVE_PATH ]
 			then
@@ -174,6 +189,8 @@ do
 
 				# cleanup
 				unlink $ARCHIVE_PATH
+			else
+				echo "Try lower compress ratio."
 			fi
 		fi
 

@@ -52,11 +52,13 @@ Usage
 
 ### Directly in shell
 
-    bash backup.sh <backup_type> <period>
+    bash backup.sh <backup_type> <period> <compress_ratio>
+
+Compression ratio parameter is opional. It sets to 5 if it not set.
 
 Example:
 
-    bash backup.sh bases daily
+    bash backup.sh bases daily 7
 
 Supported backup types:
 
@@ -68,6 +70,17 @@ Supported periods:
 - daily - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
 - weekly - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
 - monthly - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
+
+Supported compress ratio:
+
+- 0 - without compression
+- 1 - fastest
+- 3 - fast
+- 5 - normal (default) 
+- 7 - maximum
+- 9 - ultra
+
+Better compression ratios with big files can lead to fails. if at an archiving there is a fails that it is necessary to lower compression ratio.
 
 ### Cron
 
@@ -86,5 +99,6 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 14.05.2017 - 1.0.2 - add compress ratio parameter
 - 13.05.2017 - 1.0.1 - main script code refactoring
 - 11.05.2017 - 1.0.0 - released
