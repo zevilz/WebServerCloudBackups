@@ -1,5 +1,5 @@
 # WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.1.0-green.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.1.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
-Automatic backups your web projects bases and files to the clouds via WebDAV. Supports setting passwords for archives and excluding specified folders.
+Automatic backups your web projects bases (MySQL) and files to the clouds via WebDAV. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
 ------------
