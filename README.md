@@ -98,9 +98,10 @@ If you want receive script result to email add below to the top of crontab list 
 
     MAILTO=name@domain.com
 
-### TODO
-- [] add support for others database types backup
-- [] add support for partitioning archives into specified size
+TODO
+----
+- [ ] add support for others database types backup
+- [ ] add support for partitioning archives into specified size
 
 Changelog
 ---------
