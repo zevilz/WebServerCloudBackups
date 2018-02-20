@@ -103,6 +103,7 @@ TODO
 - [ ] add support for others database types backup
 - [ ] add support for partitioning archives into specified size
 - [ ] add automatically checking/creating folders in cloud
+- [ ] add logging with rotation
 
 Changelog
 ---------
