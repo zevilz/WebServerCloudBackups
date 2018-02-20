@@ -88,11 +88,11 @@ Better compression ratios with big files can lead to fails. if at an archiving t
 
 Add lines in root crontab like below
 
-    0 0 * * * bash /path/to/script/backup.sh bases daily # bases backup every day in 00:00
-    20 0 * * 1 bash /path/to/script/backup.sh bases weekly # bases backup every monday in 00:20
-    40 0 1 * * bash /path/to/script/backup.sh bases monthly # bases backup every 1st day every month in 00:40
-    0 1 * * 1 bash /path/to/script/backup.sh files weekly 7 # files backup every monday in 01:00 with changed compression ratio
-    0 4 1 * * bash /path/to/script/backup.sh files monthly 7 # files backup every 1st day every month in 04:00 with changed compression ratio
+    0 0 * * * /bin/bash /path/to/script/backup.sh bases daily # bases backup every day in 00:00
+    20 0 * * 1 /bin/bash /path/to/script/backup.sh bases weekly # bases backup every monday in 00:20
+    40 0 1 * * /bin/bash /path/to/script/backup.sh bases monthly # bases backup every 1st day every month in 00:40
+    0 1 * * 1 /bin/bash /path/to/script/backup.sh files weekly 7 # files backup every monday in 01:00 with changed compression ratio
+    0 4 1 * * /bin/bash /path/to/script/backup.sh files monthly 7 # files backup every 1st day every month in 04:00 with changed compression ratio
 
 If you want receive script result to email add below to the top of crontab list (require working MTA on your server)
 
