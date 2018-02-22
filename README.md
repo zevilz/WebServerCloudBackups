@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.1.0-green.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.1.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.2.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.2.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -26,6 +26,8 @@ Configuring
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to **false** it will be used this password. if project password set to **false** and this password set to **false** password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
 - **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`)
+- **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`)
+- **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set)
 
 5. Add your projects after **declare -A projects** one per row like below:
 
@@ -101,13 +103,16 @@ If you want receive script result to email add below to the top of crontab list 
 TODO
 ----
 - [ ] add support for others database types backup
-- [ ] add support for partitioning archives into specified size
-- [ ] add automatically checking/creating folders in cloud
+- [x] ~~add support for partitioning archives into specified size~~
+- [x] ~~add automatically checking/creating folders in cloud~~
 - [ ] add logging with rotation
+- [ ] validating vars from config file
+- [ ] add full support for some special characters, spaces and non latin characters in file names and paths
 
 Changelog
 ---------
 
+- 22.02.2018 - 1.2.0 - added support for partitioning archives into specified size, automatically checking/creating folders in cloud, automatically remove slashes in the end of paths in vars to avoid errors, small code refactoring
 - 20.02.2018 - 1.1.0 - added support for excluding folders when archiving, small code refactoring, added new vars to config file
 - 14.05.2017 - 1.0.2 - added compress ratio parameter
 - 13.05.2017 - 1.0.1 - main script code refactoring
