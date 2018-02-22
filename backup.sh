@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.1.0
+# Version: 1.2.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -57,12 +57,11 @@ fi
 for i in "${!projects[@]}"
 do
 	# vars
-	PROJECT_NAME=`echo ${projects[$i]} | cut -f 1 -d ' '`
-	PROJECT_DB=`echo ${projects[$i]} | cut -f 2 -d ' '`
-	PROJECT_FOLDER=`echo ${projects[$i]} | cut -f 3 -d ' '`
-	PROJECT_ARCHIVE_PASS=`echo ${projects[$i]} | cut -f 4 -d ' '`
-	PROJECT_CLOUD_PATH=$CLOUD_PATH$PROJECT_NAME"/"
-
+	PROJECT_NAME=$(echo ${projects[$i]} | cut -f 1 -d ' ')
+	PROJECT_DB=$(echo ${projects[$i]} | cut -f 2 -d ' ')
+	PROJECT_FOLDER=$(echo ${projects[$i]} | cut -f 3 -d ' ' | sed "s/\/$//g")
+	PROJECT_ARCHIVE_PASS=$(echo ${projects[$i]} | cut -f 4 -d ' ')
+	PROJECT_CLOUD_PATH=$(echo $CLOUD_PATH | sed "s/\/$//g")"/$PROJECT_NAME"
 	if [ $PROJECT_ARCHIVE_PASS != "false" ]; then
 		ARCHIVE_PASS=" -p$PROJECT_ARCHIVE_PASS"
 	elif [ $GLOBAL_ARCHIVE_PASS != "false" ]; then
@@ -70,17 +69,51 @@ do
 	else
 		ARCHIVE_PASS=""
 	fi
+	if [ $SPLIT != "false" ]; then
+		SPLIT_7Z=" -v$SPLIT"
+	else
+		SPLIT_7Z=""
+	fi
+	if [ -z $LAST_BACKUPS_PATH ]; then
+		LAST_BACKUPS_PATH=$CUR_PATH"/last_backups"
+	else
+		LAST_BACKUPS_PATH=$(echo $LAST_BACKUPS_PATH | sed "s/\/$//g")
+	fi
+
+	# create dir for last backups listings if not exists
+	if ! [ -d $LAST_BACKUPS_PATH ]; then
+		mkdir $LAST_BACKUPS_PATH
+	fi
+
+	# check/create project folder in cloud
+	CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+	touch $CHECK_FILE
+	curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T $CHECK_FILE $PROJECT_CLOUD_PATH"/"
+	if ! [ $? == 0 ]; then
+		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH
+	else
+		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud"
+	fi
+	rm $CHECK_FILE
 
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
 
-		echo "# "$PROJECT_NAME" files backup"
-		ARCHIVE_PATH=$TMP_PATH""$PROJECT_NAME"_files_"$PERIOD".7z"
+		# get last backup files list
+		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD ]]; then
+			LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD)
+		else
+			LAST_BACKUP_FILES=
+		fi
+
 		# archiving
+		echo "# "$PROJECT_NAME" files backup"
+		ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_files_"$PERIOD".7z"
 		echo -n "Archiving..."
 
 		if [ -d $PROJECT_FOLDER ]; then
 
+			# exclude folders
 			if ! [ -z "$EXCLUDE" ]; then
 				EXCLUDE_7Z=" -xr!"$(echo $EXCLUDE | sed 's/\ /\ -xr!/g')
 			else
@@ -92,9 +125,17 @@ do
 				EXCLUDE_RELATIVE_7Z=""
 			fi
 
-			7z a -mx$COMPRESS_RATIO -mhe=on$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
+			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
+
+			# remove part postfix if only one part
+			if [[ $(ls $ARCHIVE_PATH* | wc -l) -eq 1 ]]; then
+				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
+			fi
 
 			if [ -f $ARCHIVE_PATH ]; then
+				echo -n "${green}[OK]"
+				ARCHIVE=1
+			elif [ -f $ARCHIVE_PATH".001" ]; then
 				echo -n "${green}[OK]"
 				ARCHIVE=1
 			else
@@ -105,11 +146,19 @@ do
 			echo
 
 			if [ $ARCHIVE == 1 ]; then
-				# upload to cloud
+
+				# remove old files from cloud
+				if ! [ -z $LAST_BACKUP_FILES ]; then
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}"
+				fi
+
+				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T $ARCHIVE_PATH $PROJECT_CLOUD_PATH
+				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/"
 				if [ $? == 0 ]; then
 					echo -n "${green}[OK]"
+					NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+					echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD
 				else
 					echo -n "${red}[fail]"
 				fi
@@ -117,7 +166,8 @@ do
 				echo
 
 				# cleanup
-				unlink $ARCHIVE_PATH
+				rm $ARCHIVE_PATH*
+
 			else
 				echo "Try lower compress ratio."
 			fi
@@ -137,11 +187,18 @@ do
 	# bases backup
 	if [[ $PROJECT_DB != "false" && $1 == "bases" ]]; then
 
-		echo "# "$PROJECT_NAME" database backup"
-		MYSQL_DUMP_PATH=$TMP_PATH""$PROJECT_NAME"_base_"$PERIOD".sql"
-		ARCHIVE_PATH=$TMP_PATH""$PROJECT_NAME"_base_"$PERIOD".7z"
+		# get last backup files list
+		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD ]]; then
+			LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD)
+		else
+			LAST_BACKUP_FILES=
+		fi
 
-		# base dump
+		echo "# "$PROJECT_NAME" database backup"
+		MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql"
+		ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".7z"
+
+		# base dumping
 		echo -n "Dump creation..."
 		mysqldump -u root --password=$MYSQL_PASS --databases $PROJECT_DB > $MYSQL_DUMP_PATH
 
@@ -156,11 +213,20 @@ do
 		echo
 
 		if [ $DUMP == 1 ]; then
+
 			# archiving
 			echo -n "Archiving..."
-			7z a -mx$COMPRESS_RATIO -mhe=on$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+
+			# remove part postfix if only one part
+			if [[ $(ls $ARCHIVE_PATH* | wc -l) -eq 1 ]]; then
+				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
+			fi
 
 			if [ -f $ARCHIVE_PATH ]; then
+				echo -n "${green}[OK]"
+				ARCHIVE=1
+			elif [ -f $ARCHIVE_PATH".001" ]; then
 				echo -n "${green}[OK]"
 				ARCHIVE=1
 			else
@@ -171,12 +237,20 @@ do
 			echo
 
 			if [ $ARCHIVE == 1 ]; then
-				# upload to cloud
+
+				# remove old files from cloud
+				if ! [ -z $LAST_BACKUP_FILES ]; then
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}"
+				fi
+
+				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T $ARCHIVE_PATH $PROJECT_CLOUD_PATH
+				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/"
 				if [ $? == 0 ]
 				then
 					echo -n "${green}[OK]"
+					NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+					echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD
 				else
 					echo -n "${red}[fail]"
 				fi
@@ -184,7 +258,7 @@ do
 				echo
 
 				# cleanup
-				unlink $ARCHIVE_PATH
+				rm $ARCHIVE_PATH*
 			else
 				echo "Try lower compress ratio."
 			fi
