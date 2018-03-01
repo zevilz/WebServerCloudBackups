@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.2.0
+# Version: 1.2.1
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -87,14 +87,14 @@ do
 
 	# check/create project folder in cloud
 	CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
-	touch $CHECK_FILE
-	curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T $CHECK_FILE $PROJECT_CLOUD_PATH"/"
-	if ! [ $? == 0 ]; then
+	touch "$CHECK_FILE"
+	CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+	if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
 		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH
 	else
 		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud"
 	fi
-	rm $CHECK_FILE
+	rm "$CHECK_FILE"
 
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
