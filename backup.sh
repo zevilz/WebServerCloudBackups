@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.2.1
+# Version: 1.3.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -200,7 +200,7 @@ do
 
 		# base dumping
 		echo -n "Dump creation..."
-		mysqldump -u root --password=$MYSQL_PASS --databases $PROJECT_DB > $MYSQL_DUMP_PATH
+		mysqldump -u $MYSQL_USER --password=$MYSQL_PASS --databases $PROJECT_DB > $MYSQL_DUMP_PATH
 
 		if [ $? == 0 ]; then
 			echo -n "${green}[OK]"
