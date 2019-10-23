@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.3.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.3.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.1) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -113,6 +113,7 @@ TODO
 Changelog
 ---------
 
+- 23.10.2019 - 1.3.1 - hidden curl success messages for clean output
 - 18.02.2019 - 1.3.0 - added support for sets user for databases backups instead using root user
 - 01.03.2018 - 1.2.1 - bug fixes
 - 22.02.2018 - 1.2.0 - added support for partitioning archives into specified size, automatically checking/creating folders in cloud, automatically remove slashes in the end of paths in vars to avoid errors, small code refactoring
