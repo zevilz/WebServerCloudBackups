@@ -149,7 +149,7 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" > /dev/null
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
 				fi
 
 				# upload new files to cloud
@@ -240,7 +240,7 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" > /dev/null
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
 				fi
 
 				# upload new files to cloud
