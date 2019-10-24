@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.3.1
+# Version: 1.3.2
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
