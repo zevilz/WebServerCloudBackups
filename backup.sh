@@ -128,7 +128,7 @@ do
 			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
 
 			# remove part postfix if only one part
-			if [[ $(ls $ARCHIVE_PATH.* | wc -l) -eq 1 ]]; then
+			if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
 				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
 			fi
 
@@ -219,7 +219,7 @@ do
 			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
 
 			# remove part postfix if only one part
-			if [[ $(ls $ARCHIVE_PATH.* | wc -l) -eq 1 ]]; then
+			if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
 				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
 			fi
 
