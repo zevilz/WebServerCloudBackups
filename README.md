@@ -5,7 +5,7 @@ Requirements
 ------------
 
 - curl (for WebDAV)
-- [s3cmd](https://s3tools.org/s3cmd) (for s3)
+- [s3cmd](https://s3tools.org/s3cmd) (for S3)
 - 7zip archiver (usually **p7zip-rar** **p7zip-full** on deb-based distros)
 
 Configuring
@@ -23,16 +23,16 @@ Configuring
 - **MYSQL_PASS** - MySQL/MariaDB user password;
 - **CLOUD_USER** - login for your cloud (for WebDAV);
 - **CLOUD_PASS** - password for your cloud user (for WebDAV);
-- **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: https://webdav.yandex.ru/Backups/) or path to s3 spacename (ex.: s3://myspacename)
+- **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: `https://webdav.yandex.ru/Backups/`) or path to S3 spacename (ex.: `s3://myspacename`)
 - **CLOUD_PROTO** - cloud protocol (`webdav` or `s3`, default value is `webdav` if empty or undefined)
-- **TMP_PATH** - path for temporary files on server (ex.: /tmp/)
-- **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to **false** it will be used this password. if project password set to **false** and this password set to **false** password not set to project archive.)
+- **TMP_PATH** - path for temporary files on server (ex.: `/tmp/`)
+- **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
 - **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`)
 - **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`)
 - **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set)
 
-5. Add your projects after **declare -A projects** one per row like below:
+5. Add your projects after `declare -A projects` one per row like below:
 
 ```bash
 projects[unique_key]="<project_name> <db_name> <project_folder> <project_archive_password>"
@@ -59,13 +59,17 @@ Usage
 
 ### Directly in shell
 
-    bash backup.sh <backup_type> <period> <compress_ratio>
+```bash
+bash backup.sh <backup_type> <period> <compress_ratio>
+```
 
 Compression ratio parameter is opional. It sets to 5 if it not set.
 
 Example:
 
-    bash backup.sh bases daily 7
+```bash
+bash backup.sh bases daily 7
+```
 
 Supported backup types:
 
