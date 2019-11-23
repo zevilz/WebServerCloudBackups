@@ -1,10 +1,11 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.3.2-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.2) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
-Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV. Supports setting passwords for archives and excluding specified folders.
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.4.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.4.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or s3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
 ------------
 
-- curl
+- curl (for WebDAV)
+- [s3cmd](https://s3tools.org/s3cmd) (for s3)
 - 7zip archiver (usually **p7zip-rar** **p7zip-full** on deb-based distros)
 
 Configuring
@@ -20,9 +21,10 @@ Configuring
 
 - **MYSQL_USER** - MySQL/MariaDB user (min user privileges: `EVENT,LOCK TABLES,SELECT,SHOW DATABASES` on all databases);
 - **MYSQL_PASS** - MySQL/MariaDB user password;
-- **CLOUD_USER** - login for your cloud;
-- **CLOUD_PASS** - password for your cloud user;
-- **CLOUD_PATH** - full path to cloud folder (ex.: https://webdav.yandex.ru/Backups/)
+- **CLOUD_USER** - login for your cloud (for WebDAV);
+- **CLOUD_PASS** - password for your cloud user (for WebDAV);
+- **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: https://webdav.yandex.ru/Backups/) or path to s3 spacename (ex.: s3://myspacename)
+- **CLOUD_PROTO** - cloud protocol (`webdav` or `s3`, default value is `webdav` if empty or undefined)
 - **TMP_PATH** - path for temporary files on server (ex.: /tmp/)
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to **false** it will be used this password. if project password set to **false** and this password set to **false** password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
@@ -101,6 +103,12 @@ If you want receive script result to email add below to the top of crontab list 
 
     MAILTO=name@domain.com
 
+Tested on
+---------
+- Hetzner Storage Box
+- Yandex Disk
+- DigitalOcean Spaces
+
 TODO
 ----
 - [ ] add support for others database types backup
@@ -109,10 +117,13 @@ TODO
 - [ ] add logging with rotation
 - [ ] validating vars from config file
 - [ ] add full support for some special characters, spaces and non latin characters in file names and paths
+- [ ] add ability to backup files and databases to own archive
+- [ ] add functionality for restore from backups
 
 Changelog
 ---------
 
+- 23.11.2019 - 1.4.0 - added support for S3 storages
 - 24.10.2019 - 1.3.2 - [bug fixes](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.2)
 - 23.10.2019 - 1.3.1 - hidden curl success messages for clean output
 - 18.02.2019 - 1.3.0 - added support for sets user for databases backups instead using root user
