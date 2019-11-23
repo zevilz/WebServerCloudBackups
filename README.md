@@ -1,5 +1,5 @@
 # WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.4.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.4.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
-Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or s3. Supports setting passwords for archives and excluding specified folders.
+Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
 ------------
@@ -105,9 +105,9 @@ If you want receive script result to email add below to the top of crontab list 
 
 Tested on
 ---------
-- Hetzner Storage Box
-- Yandex Disk
-- DigitalOcean Spaces
+- Hetzner Storage Box (WebDav)
+- Yandex Disk (WebDav)
+- DigitalOcean Spaces (S3)
 
 TODO
 ----
