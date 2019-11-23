@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.3.2
+# Version: 1.4.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -24,16 +24,19 @@ if [[ ! $# -eq 2 && ! $# -eq 3 ]]; then
 	echo "Usage: bash $0 files|bases daily|weekly|monthly 0|1|3|5|7|9(optional)"
 	exit 1
 fi
+
 if [[ $1 != "files" && $1 != "bases" ]]; then
 	echo "Wrong type set!"
 	echo "Type must be set to \"files\" or \"bases\""
 	exit 1
 fi
+
 if [[ $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
 	echo "Wrong period set!"
 	echo "Period must be set to \"daily\" or \"weekly\" or \"monthly\""
 	exit 1
 fi
+
 if [ $3 ]; then
 	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]; then
 		echo "Wrong compression ratio set!"
@@ -44,6 +47,16 @@ if [ $3 ]; then
 	fi
 else
 	COMPRESS_RATIO=5
+fi
+
+if [ -z "$CLOUD_PROTO" ]; then
+	CLOUD_PROTO="webdav"
+fi
+
+if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" ]]; then
+	echo "Wrong cloud protocol given!"
+	echo "Protocol must be set to webdav or s3 (webdav by default)"
+	exit 1
 fi
 
 # period time postfix
@@ -85,16 +98,18 @@ do
 		mkdir $LAST_BACKUPS_PATH
 	fi
 
-	# check/create project folder in cloud
-	CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
-	touch "$CHECK_FILE"
-	CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
-	if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
-		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
-	else
-		curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+	# check/create project folder in cloud (webdav)
+	if [[ $CLOUD_PROTO == "webdav" ]]; then
+		CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+		touch "$CHECK_FILE"
+		CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+		if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
+			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
+		else
+			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+		fi
+		rm "$CHECK_FILE"
 	fi
-	rm "$CHECK_FILE"
 
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
@@ -149,12 +164,24 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+					if [[ $CLOUD_PROTO == "webdav" ]]; then
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+					elif [[ $CLOUD_PROTO == "s3" ]]; then
+						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+						for FILE in $LAST_BACKUP_FILES
+						do
+							s3cmd rm "$FILE" 2>/dev/null > /dev/null
+						done
+					fi
 				fi
 
 				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+				if [[ $CLOUD_PROTO == "webdav" ]]; then
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+				elif [[ $CLOUD_PROTO == "s3" ]]; then
+					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+				fi
 				if [ $? == 0 ]; then
 					echo -n "${green}[OK]"
 					NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
@@ -240,12 +267,24 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+					if [[ $CLOUD_PROTO == "webdav" ]]; then
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+					elif [[ $CLOUD_PROTO == "s3" ]]; then
+						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+						for FILE in $LAST_BACKUP_FILES
+						do
+							s3cmd rm "$FILE" 2>/dev/null > /dev/null
+						done
+					fi
 				fi
 
 				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+				if [[ $CLOUD_PROTO == "webdav" ]]; then
+					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+				elif [[ $CLOUD_PROTO == "s3" ]]; then
+					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+				fi
 				if [ $? == 0 ]
 				then
 					echo -n "${green}[OK]"
