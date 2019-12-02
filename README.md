@@ -111,6 +111,7 @@ Tested on
 ---------
 - Hetzner Storage Box (WebDav)
 - Yandex Disk (WebDav)
+- Mail.ru Cloud (WebDav)
 - DigitalOcean Spaces (S3)
 
 TODO
@@ -123,6 +124,8 @@ TODO
 - [ ] add full support for some special characters, spaces and non latin characters in file names and paths
 - [ ] add ability to backup files and databases to own archive
 - [ ] add functionality for restore from backups
+- [ ] add support for local backup to mounted clouds disks
+- [ ] add support for backups via rsync
 
 Changelog
 ---------
