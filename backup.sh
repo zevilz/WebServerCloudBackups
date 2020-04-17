@@ -227,7 +227,7 @@ do
 
 		# base dumping
 		echo -n "Dump creation..."
-		mysqldump -u $MYSQL_USER --password=$MYSQL_PASS --databases $PROJECT_DB > $MYSQL_DUMP_PATH
+		mysqldump -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB > $MYSQL_DUMP_PATH
 
 		if [ $? == 0 ]; then
 			echo -n "${green}[OK]"
