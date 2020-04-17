@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.4.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.4.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.4.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.4.1) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -130,6 +130,7 @@ TODO
 Changelog
 ---------
 
+- 17.04.2020 - 1.4.1 - removed "--databases" parameter in mysqldump command for support restore databases to another databases
 - 23.11.2019 - 1.4.0 - added support for S3 storages
 - 24.10.2019 - 1.3.2 - [bug fixes](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.2)
 - 23.10.2019 - 1.3.1 - hidden curl success messages for clean output
