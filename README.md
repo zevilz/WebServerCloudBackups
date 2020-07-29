@@ -29,8 +29,8 @@ Configuring
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
 - **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`)
-- **<PERIOD>_EXCLUDE** - spaces separated folders to exclude for specific backup period (ex.: `DAILY_EXCLUDE="uploads"`)
-- **<PERIOD>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`)
+- **\<PERIOD\>_EXCLUDE** - spaces separated folders to exclude for specific backup period (ex.: `DAILY_EXCLUDE="uploads"`)
+- **\<PERIOD\>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`)
 - **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`)
 - **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set)
 
