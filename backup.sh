@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.4.1
+# Version: 1.5.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -128,16 +128,45 @@ do
 
 		if [ -d $PROJECT_FOLDER ]; then
 
+			EXCLUDE_7Z=""
+			EXCLUDE_RELATIVE_7Z=""
+
 			# exclude folders
 			if ! [ -z "$EXCLUDE" ]; then
-				EXCLUDE_7Z=" -xr!"$(echo $EXCLUDE | sed 's/\ /\ -xr!/g')
-			else
-				EXCLUDE_7Z=""
+				EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $EXCLUDE | sed 's/\ /\ -xr!/g')
 			fi
 			if ! [ -z "$EXCLUDE_RELATIVE" ]; then
-				EXCLUDE_RELATIVE_7Z=" -x!$(basename "$PROJECT_FOLDER")/"$(echo $EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-			else
-				EXCLUDE_RELATIVE_7Z=""
+				EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+			fi
+
+			# daily exclude folders
+			if [[ $2 == 'daily' ]]; then
+				if ! [ -z "$DAILY_EXCLUDE" ]; then
+					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $DAILY_EXCLUDE | sed 's/\ /\ -xr!/g')
+				fi
+				if ! [ -z "$DAILY_EXCLUDE_RELATIVE" ]; then
+					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $DAILY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+				fi
+			fi
+
+			# weekly exclude folders
+			if [[ $2 == 'weekly' ]]; then
+				if ! [ -z "$WEEKLY_EXCLUDE" ]; then
+					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $WEEKLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+				fi
+				if ! [ -z "$WEEKLY_EXCLUDE_RELATIVE" ]; then
+					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $WEEKLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+				fi
+			fi
+
+			# monthly exclude folders
+			if [[ $2 == 'monthly' ]]; then
+				if ! [ -z "$MONTHLY_EXCLUDE" ]; then
+					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $MONTHLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+				fi
+				if ! [ -z "$MONTHLY_EXCLUDE_RELATIVE" ]; then
+					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $MONTHLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+				fi
 			fi
 
 			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
