@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.4.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.4.1) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.5.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.5.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -29,6 +29,8 @@ Configuring
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
 - **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`)
+- **<PERIOD>_EXCLUDE** - spaces separated folders to exclude for specific backup period (ex.: `DAILY_EXCLUDE="uploads"`)
+- **<PERIOD>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`)
 - **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`)
 - **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set)
 
@@ -110,7 +112,7 @@ If you want receive script result to email add below to the top of crontab list 
 Tested on
 ---------
 - Hetzner Storage Box (WebDav)
-- Yandex Disk (WebDav)
+- Yandex Disk (WebDav, not recommended for big files)
 - Mail.ru Cloud (WebDav)
 - DigitalOcean Spaces (S3)
 
@@ -130,6 +132,7 @@ TODO
 Changelog
 ---------
 
+- 29.07.2020 - 1.5.0 - added parameters for excluding folders for specific backup periods
 - 17.04.2020 - 1.4.1 - removed "--databases" parameter in mysqldump command for support restore databases to another databases
 - 23.11.2019 - 1.4.0 - added support for S3 storages
 - 24.10.2019 - 1.3.2 - [bug fixes](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.3.2)
