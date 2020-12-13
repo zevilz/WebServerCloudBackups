@@ -75,24 +75,24 @@ bash backup.sh bases daily 7
 
 Supported backup types:
 
-- files - backup projects folder
-- bases - backup projects bases
+- `files` - backup projects folder
+- `bases` - backup projects bases
 
 Supported periods:
 
-- hourly - add number and name of the current week day and current hour to archive name (ex.: domain.com_files_5_Friday_02.7z)
-- daily - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
-- weekly - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
-- monthly - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
+- `hourly` - add number and name of the current week day and current hour to archive name (ex.: domain.com_files_5_Friday_02.7z)
+- `daily` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
+- `weekly` - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
+- `monthly` - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
 
 Supported compress ratio:
 
-- 0 - without compression
-- 1 - fastest
-- 3 - fast
-- 5 - normal (default) 
-- 7 - maximum
-- 9 - ultra
+- `0` - without compression
+- `1` - fastest
+- `3` - fast
+- `5` - normal (default) 
+- `7` - maximum
+- `9` - ultra
 
 Better compression ratios with big files can lead to fails. if at an archiving there is a fails that it is necessary to lower compression ratio.
 
