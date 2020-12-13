@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.5.0
+# Version: 1.6.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -21,7 +21,7 @@ fi
 
 if [[ ! $# -eq 2 && ! $# -eq 3 ]]; then
 	echo "Wrong number of parameters!"
-	echo "Usage: bash $0 files|bases daily|weekly|monthly 0|1|3|5|7|9(optional)"
+	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional)"
 	exit 1
 fi
 
@@ -31,9 +31,9 @@ if [[ $1 != "files" && $1 != "bases" ]]; then
 	exit 1
 fi
 
-if [[ $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
+if [[ $2 != "hourly" && $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
 	echo "Wrong period set!"
-	echo "Period must be set to \"daily\" or \"weekly\" or \"monthly\""
+	echo "Period must be set to \"hourly\" or \"daily\" or \"weekly\" or \"monthly\""
 	exit 1
 fi
 
@@ -60,7 +60,9 @@ if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" ]]; then
 fi
 
 # period time postfix
-if [ $2 == "daily" ]; then
+if [ $2 == "hourly" ]; then
+	PERIOD=$(date +"%u")_$(date +"%A")_$(date +"%H")
+elif [ $2 == "daily" ]; then
 	PERIOD=$(date +"%u")_$(date +"%A")
 else
 	PERIOD=$2
@@ -137,6 +139,16 @@ do
 			fi
 			if ! [ -z "$EXCLUDE_RELATIVE" ]; then
 				EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+			fi
+
+			# hourly exclude folders
+			if [[ $2 == 'hourly' ]]; then
+				if ! [ -z "$HOURLY_EXCLUDE" ]; then
+					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $HOURLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+				fi
+				if ! [ -z "$HOURLY_EXCLUDE_RELATIVE" ]; then
+					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $HOURLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+				fi
 			fi
 
 			# daily exclude folders
