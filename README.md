@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.6.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.0) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.6.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.1) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -80,7 +80,7 @@ Supported backup types:
 
 Supported periods:
 
-- `hourly` - add number and name of the current week day and current hour to archive name (ex.: domain.com_files_5_Friday_02.7z)
+- `hourly` - add "hourly" mark and current hour to archive name (ex.: domain.com_base_hourly_02.7z)
 - `daily` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
 - `weekly` - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
 - `monthly` - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
@@ -135,6 +135,7 @@ TODO
 Changelog
 ---------
 
+- 17.12.2020 - 1.6.1 - fixed archive filename for hourly backup period
 - 13.12.2020 - 1.6.0 - added hourly backup period
 - 29.07.2020 - 1.5.0 - added parameters for excluding folders for specific backup periods
 - 17.04.2020 - 1.4.1 - removed "--databases" parameter in mysqldump command for support restore databases to another databases
