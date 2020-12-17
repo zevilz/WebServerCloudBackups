@@ -61,7 +61,7 @@ fi
 
 # period time postfix
 if [ $2 == "hourly" ]; then
-	PERIOD=$(date +"%u")_$(date +"%A")_$(date +"%H")
+	PERIOD=$2_$(date +"%H")
 elif [ $2 == "daily" ]; then
 	PERIOD=$(date +"%u")_$(date +"%A")
 else
