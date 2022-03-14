@@ -263,12 +263,12 @@ do
 		fi
 
 		echo "# "$PROJECT_NAME" database backup"
-		MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql"
+		MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql.gz"
 		ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".7z"
 
 		# base dumping
 		echo -n "Dump creation..."
-		mysqldump -u $MYSQL_USER --password=$MYSQL_PASS --insert-ignore --skip-lock-tables --single-transaction=TRUE $PROJECT_DB > $MYSQL_DUMP_PATH
+		mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
 
 		if [ $? == 0 ]; then
 			echo -n "${green}[OK]"
