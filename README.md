@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.6.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.1) [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.me/zevilz)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.6.2-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
 
 Requirements
@@ -135,6 +135,7 @@ TODO
 Changelog
 ---------
 
+- 14.03.2022 - 1.6.2 - [added new parameters to mysqldump command](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2) + gzip compression
 - 17.12.2020 - 1.6.1 - fixed archive filename for hourly backup period
 - 13.12.2020 - 1.6.0 - added hourly backup period
 - 29.07.2020 - 1.5.0 - added parameters for excluding folders for specific backup periods
