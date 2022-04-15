@@ -116,6 +116,25 @@ do
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
 
+		# get project cloud proto for project files
+		case "$PROJECT_FOLDER" in
+			*:webdav)
+				CLOUD_PROTO_PROJECT_FILES=webdav
+				;;
+			*:s3)
+				CLOUD_PROTO_PROJECT_FILES=s3
+				;;
+			*:ssh)
+				CLOUD_PROTO_PROJECT_FILES=ssh
+				;;
+			*)
+				CLOUD_PROTO_PROJECT_FILES=$CLOUD_PROTO
+				;;
+		esac
+
+		# remove proto
+		PROJECT_FOLDER=$(echo $PROJECT_FOLDER | awk -F ':' '{print $1}')
+
 		# get last backup files list
 		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD ]]; then
 			LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD)
@@ -254,6 +273,25 @@ do
 
 	# bases backup
 	if [[ $PROJECT_DB != "false" && $1 == "bases" ]]; then
+
+		# get project cloud proto for project database
+		case "$PROJECT_DB" in
+			*:webdav)
+				CLOUD_PROTO_PROJECT_DB=webdav
+				;;
+			*:s3)
+				CLOUD_PROTO_PROJECT_DB=s3
+				;;
+			*:ssh)
+				CLOUD_PROTO_PROJECT_DB=ssh
+				;;
+			*)
+				CLOUD_PROTO_PROJECT_DB=$CLOUD_PROTO
+				;;
+		esac
+
+		# remove proto
+		PROJECT_DB=$(echo $PROJECT_DB | awk -F ':' '{print $1}')
 
 		# get last backup files list
 		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD ]]; then
