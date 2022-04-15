@@ -53,9 +53,9 @@ if [ -z "$CLOUD_PROTO" ]; then
 	CLOUD_PROTO="webdav"
 fi
 
-if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" ]]; then
+if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" && "$CLOUD_PROTO" != "ssh" ]]; then
 	echo "Wrong cloud protocol given!"
-	echo "Protocol must be set to webdav or s3 (webdav by default)"
+	echo "Protocol must be set to webdav, s3 or ssh (webdav by default)"
 	exit 1
 fi
 
