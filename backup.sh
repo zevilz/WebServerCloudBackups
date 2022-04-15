@@ -224,9 +224,9 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					if [[ $CLOUD_PROTO == "webdav" ]]; then
+					if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
 						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
-					elif [[ $CLOUD_PROTO == "s3" ]]; then
+					elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
 						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
 						for FILE in $LAST_BACKUP_FILES
 						do
@@ -237,9 +237,9 @@ do
 
 				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				if [[ $CLOUD_PROTO == "webdav" ]]; then
+				if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
 					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
-				elif [[ $CLOUD_PROTO == "s3" ]]; then
+				elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
 					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
 				fi
 				if [ $? == 0 ]; then
@@ -346,9 +346,9 @@ do
 
 				# remove old files from cloud
 				if ! [ -z $LAST_BACKUP_FILES ]; then
-					if [[ $CLOUD_PROTO == "webdav" ]]; then
+					if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
 						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
-					elif [[ $CLOUD_PROTO == "s3" ]]; then
+					elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
 						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
 						for FILE in $LAST_BACKUP_FILES
 						do
@@ -359,9 +359,9 @@ do
 
 				# upload new files to cloud
 				echo -n "Uploading to the cloud..."
-				if [[ $CLOUD_PROTO == "webdav" ]]; then
+				if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
 					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
-				elif [[ $CLOUD_PROTO == "s3" ]]; then
+				elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
 					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
 				fi
 				if [ $? == 0 ]
