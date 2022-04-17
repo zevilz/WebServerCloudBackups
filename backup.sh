@@ -19,9 +19,9 @@ else
 	reset=$(tput sgr0)
 fi
 
-if [[ ! $# -eq 2 && ! $# -eq 3 ]]; then
+if [[ ! $# -lt 2 ]]; then
 	echo "Wrong number of parameters!"
-	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional)"
+	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 	exit 1
 fi
 
@@ -40,13 +40,25 @@ fi
 if [ $3 ]; then
 	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]; then
 		echo "Wrong compression ratio set!"
-		echo "Compression ratio must be set to 0|1|3|5|7|9"
+		echo "Compression ratio must be set to 0|1|3|5|7|9 (5 by default)"
 		exit 1
 	else
 		COMPRESS_RATIO=$3
 	fi
 else
 	COMPRESS_RATIO=5
+fi
+
+if [ $4 ]; then
+	if [[ $4 != "webdav" && $4 != "s3" && $4 != "ssh" ]]; then
+		echo "Wrong protocol set!"
+		echo "Protocol must be set to webdav|s3|ssh (all protocols enabled by default)"
+		exit 1
+	else
+		ENABLED_PROTO=$4
+	fi
+else
+	ENABLED_PROTO="all"
 fi
 
 if [ -z "$CLOUD_PROTO" ]; then
@@ -110,19 +122,6 @@ do
 		mkdir $LAST_BACKUPS_PATH
 	fi
 
-	# check/create project folder in cloud (webdav)
-	if [[ $CLOUD_PROTO == "webdav" ]]; then
-		CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
-		touch "$CHECK_FILE"
-		CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
-		if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
-			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
-		else
-			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
-		fi
-		rm "$CHECK_FILE"
-	fi
-
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
 
@@ -148,6 +147,19 @@ do
 		if [ -d $PROJECT_FOLDER ]; then
 
 			if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" || $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+
+				# check/create project folder in cloud (webdav)
+				if [[ $CLOUD_PROTO == "webdav" ]]; then
+					CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+					touch "$CHECK_FILE"
+					CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+					if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
+					else
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+					fi
+					rm "$CHECK_FILE"
+				fi
 
 				# get last backup files list
 				if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD ]]; then
@@ -355,6 +367,19 @@ do
 		if [ $DUMP == 1 ]; then
 
 			if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" || $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+
+				# check/create project folder in cloud (webdav)
+				if [[ $CLOUD_PROTO == "webdav" ]]; then
+					CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+					touch "$CHECK_FILE"
+					CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+					if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
+					else
+						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+					fi
+					rm "$CHECK_FILE"
+				fi
 
 				# get last backup files list
 				if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD ]]; then
