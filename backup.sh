@@ -301,10 +301,11 @@ do
 
 					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
 
-						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}/${PROJECT_NAME}_files_${PERIOD}"
+						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
+						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 
 						echo -n "Syncing..."
-						rsync -azq "ssh -p $CLOUD_SSH_HOST_PORT" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
@@ -483,7 +484,7 @@ do
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 
 						echo -n "Uploading..."
-						rsync -azq "ssh -p $CLOUD_SSH_HOST_PORT" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
