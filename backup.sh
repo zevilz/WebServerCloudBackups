@@ -5,7 +5,6 @@
 # License: MIT
 # Version: 1.6.2
 
-# TODO: checking dir in cloud (ssh)
 # TODO: excluding dirs in rsync (ssh)
 # TODO: write rsync output to log
 
@@ -23,7 +22,7 @@ else
 	reset=$(tput sgr0)
 fi
 
-if [[ ! $# -lt 2 ]]; then
+if [[ $# -lt 2 ]]; then
 	echo "Wrong number of parameters!"
 	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 	exit 1
@@ -85,12 +84,12 @@ else
 fi
 
 # get cloud ssh port if exists
-if ! [ -z "$CLOUD_HOST" ]; then
-	if [[ $CLOUD_HOST == *:* ]]; then
-		CLOUD_HOST_PORT=$(echo $CLOUD_HOST | awk -F ':' '{print $2}')
-		CLOUD_HOST=$(echo $CLOUD_HOST | awk -F ':' '{print $1}')
+if ! [ -z "$CLOUD_SSH_HOST" ]; then
+	if [[ $CLOUD_SSH_HOST == *:* ]]; then
+		CLOUD_SSH_HOST_PORT=$(echo $CLOUD_SSH_HOST | awk -F ':' '{print $2}')
+		CLOUD_SSH_HOST=$(echo $CLOUD_SSH_HOST | awk -F ':' '{print $1}')
 	else
-		CLOUD_HOST_PORT=22
+		CLOUD_SSH_HOST_PORT=22
 	fi
 fi
 
@@ -305,7 +304,7 @@ do
 						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 
 						echo -n "Syncing..."
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --delete --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
