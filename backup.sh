@@ -3,9 +3,8 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.6.2
+# Version: 1.7.0
 
-# TODO: excluding dirs in rsync (ssh)
 # TODO: write rsync output to log
 
 CUR_PATH=$(dirname $0)
@@ -93,11 +92,34 @@ if ! [ -z "$CLOUD_SSH_HOST" ]; then
 	fi
 fi
 
+SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
+RSYNC_EXCLUDE_LIST_FILE="${TMP_PATH}/WebServerCloudBackups.tmp.rsync_exclude.${SCRIPT_INSTANCE_KEY}"
+
 # projects loop
 for i in "${!projects[@]}"
 do
-	# vars
+	# get project name
 	PROJECT_NAME=$(echo ${projects[$i]} | cut -f 1 -d ' ')
+
+	# get project proto
+	case "$PROJECT_NAME" in
+		*:webdav)
+			CLOUD_PROTO_PROJECT=webdav
+			;;
+		*:s3)
+			CLOUD_PROTO_PROJECT=s3
+			;;
+		*:ssh)
+			CLOUD_PROTO_PROJECT=ssh
+			;;
+		*)
+			CLOUD_PROTO_PROJECT=$CLOUD_PROTO
+			;;
+	esac
+
+	PROJECT_NAME=$(echo $PROJECT_NAME | awk -F ':' '{print $1}')
+
+	# get other vars
 	PROJECT_DB=$(echo ${projects[$i]} | cut -f 2 -d ' ')
 	PROJECT_FOLDER=$(echo ${projects[$i]} | cut -f 3 -d ' ' | sed "s/\/$//g")
 	PROJECT_ARCHIVE_PASS=$(echo ${projects[$i]} | cut -f 4 -d ' ')
@@ -142,7 +164,7 @@ do
 				CLOUD_PROTO_PROJECT_FILES=ssh
 				;;
 			*)
-				CLOUD_PROTO_PROJECT_FILES=$CLOUD_PROTO
+				CLOUD_PROTO_PROJECT_FILES=$CLOUD_PROTO_PROJECT
 				;;
 		esac
 
@@ -300,11 +322,50 @@ do
 
 					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
 
+						echo "# "$PROJECT_NAME" files backup"
+
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 
+						# exclude folders
+						if ! [ -z "$EXCLUDE" ]; then
+							RSYNC_EXCLUDE_LIST="$EXCLUDE $EXCLUDE_RELATIVE"
+						fi
+
+						# hourly exclude folders
+						if [[ $2 == 'hourly' ]]; then
+							if ! [ -z "$HOURLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$HOURLY_EXCLUDE $HOURLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# daily exclude folders
+						if [[ $2 == 'daily' ]]; then
+							if ! [ -z "$DAILY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$DAILY_EXCLUDE $DAILY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# weekly exclude folders
+						if [[ $2 == 'weekly' ]]; then
+							if ! [ -z "$WEEKLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$WEEKLY_EXCLUDE $WEEKLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# monthly exclude folders
+						if [[ $2 == 'monthly' ]]; then
+							if ! [ -z "$MONTHLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$MONTHLY_EXCLUDE $MONTHLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# prepare exclude list file
+						RSYNC_EXCLUDE_ARRAY=($RSYNC_EXCLUDE_LIST)
+						printf "%s\n" "${RSYNC_EXCLUDE_ARRAY[@]}" > "$RSYNC_EXCLUDE_LIST_FILE"
+
 						echo -n "Syncing..."
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --delete --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
@@ -313,6 +374,8 @@ do
 						fi
 						echo -n "${reset}"
 						echo
+
+						rm -f "$RSYNC_EXCLUDE_LIST_FILE"
 
 					else
 
@@ -356,7 +419,7 @@ do
 				CLOUD_PROTO_PROJECT_DB=ssh
 				;;
 			*)
-				CLOUD_PROTO_PROJECT_DB=$CLOUD_PROTO
+				CLOUD_PROTO_PROJECT_DB=$CLOUD_PROTO_PROJECT
 				;;
 		esac
 
@@ -388,7 +451,7 @@ do
 
 			if [ $DUMP == 1 ]; then
 
-				if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" || $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+				if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" || $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
 
 					# check/create project folder in cloud (webdav)
 					if [[ $CLOUD_PROTO == "webdav" ]]; then
@@ -476,14 +539,14 @@ do
 
 				fi
 
-				if [[ $CLOUD_PROTO_PROJECT_FILES == "ssh" ]]; then
+				if [[ $CLOUD_PROTO_PROJECT_DB == "ssh" ]]; then
 
 					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
 
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 
 						echo -n "Uploading..."
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
