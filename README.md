@@ -28,7 +28,7 @@ Configuring
 - **CLOUD_PROTO** - cloud protocol (`webdav` or `s3` or `ssh`, default value is `webdav` if empty or undefined)
 - **CLOUD_SSH_HOST** - hostname/IP and port of backup server separated by colon (for ssh; ex.: `123.123.123.123`, `123.123.123.123:2222`, `hostname.com:4444`)
 - **CLOUD_SSH_HOST_USER** - system username of backup server (for ssh)
-- **CLOUD_SSH_HOST_PATH** - full path to backups dir on backups server (for ssh) 
+- **CLOUD_SSH_HOST_PATH** - full path to backups dir on backups server (for ssh, projects dirs will be created automatically) 
 - **TMP_PATH** - path for temporary files on server (ex.: `/tmp/`)
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
