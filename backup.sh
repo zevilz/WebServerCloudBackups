@@ -437,7 +437,7 @@ do
 
 			# base dumping
 			echo -n "Dump creation..."
-			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
+			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
 
 			if [ $? == 0 ]; then
 				echo -n "${green}[OK]"
