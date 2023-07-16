@@ -1,5 +1,5 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.6.2-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2)
-Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3. Supports setting passwords for archives and excluding specified folders.
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.7.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
+Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives and excluding specified folders (files transfered as is with ssh proto).
 
 Requirements
 ------------
@@ -7,6 +7,7 @@ Requirements
 - curl (for WebDAV)
 - [s3cmd](https://s3tools.org/s3cmd) (for S3)
 - 7zip archiver (usually **p7zip-rar** **p7zip-full** on deb-based distros)
+- connection to backup server via SSH key without passphrase (for ssh)
 
 Configuring
 -----------
@@ -24,7 +25,10 @@ Configuring
 - **CLOUD_USER** - login for your cloud (for WebDAV);
 - **CLOUD_PASS** - password for your cloud user (for WebDAV);
 - **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: `https://webdav.yandex.ru/Backups/`) or path to S3 spacename (ex.: `s3://myspacename`)
-- **CLOUD_PROTO** - cloud protocol (`webdav` or `s3`, default value is `webdav` if empty or undefined)
+- **CLOUD_PROTO** - cloud protocol (`webdav` or `s3` or `ssh`, default value is `webdav` if empty or undefined)
+- **CLOUD_SSH_HOST** - hostname/IP and port of backup server separated by colon (for ssh; ex.: `123.123.123.123`, `123.123.123.123:2222`, `hostname.com:4444`)
+- **CLOUD_SSH_HOST_USER** - system username of backup server (for ssh)
+- **CLOUD_SSH_HOST_PATH** - full path to backups dir on backups server (for ssh) 
 - **TMP_PATH** - path for temporary files on server (ex.: `/tmp/`)
 - **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
 - **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
@@ -51,10 +55,39 @@ Parameters in quotes must be written through spaces and all required.
 
 Parameters:
 
-- project name (you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**)
-- database name (type **false** if database backup is not required for project)
-- full path to project folder (type **false** if files backup is not required for project)
-- project archive password (type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**)
+- project name - you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**
+- database name - type **false** if database backup is not required for project
+- full path to project folder - type **false** if files backup is not required for project
+- project archive password - type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**
+
+You can specify backup method to project or to files or database separatelly. Just add protocol to project name or database name or files path via colon.
+
+Do backup all project via ssh:
+
+```bash
+...
+CLOUD_PROTO="webdav"
+...
+projects[1]="domain.com:ssh com_db /home/user/www/domain.com false"
+```
+
+Do backup project database via WebDav and files via default proto (ssh):
+
+```bash
+...
+CLOUD_PROTO="ssh"
+...
+projects[1]="domain.com com_db:webdav /home/user/www/domain.com false"
+```
+
+Do backup project database via default proto (WebDav) and files via ssh:
+
+```bash
+...
+CLOUD_PROTO="webdav"
+...
+projects[1]="domain.com com_db /home/user/www/domain.com:ssh false"
+```
 
 Usage
 -----
@@ -62,15 +95,17 @@ Usage
 ### Directly in shell
 
 ```bash
-bash backup.sh <backup_type> <period> <compress_ratio>
+bash backup.sh <backup_type> <period> <compress_ratio> <enabled_protocol>
 ```
 
-Compression ratio parameter is opional. It sets to 5 if it not set.
+Compression ratio parameter is opional. It sets to 5 if it not set. It required if you want set another protocol (for backward compatibility).
 
-Example:
+Examples:
 
 ```bash
-bash backup.sh bases daily 7
+bash backup.sh bases daily
+bash backup.sh files weekly 7
+bash backup.sh files weekly 5 ssh
 ```
 
 Supported backup types:
@@ -94,7 +129,15 @@ Supported compress ratio:
 - `7` - maximum
 - `9` - ultra
 
-Better compression ratios with big files can lead to fails. if at an archiving there is a fails that it is necessary to lower compression ratio.
+Note: better compression ratios with big files can lead to fails. if at an archiving there is a fails that it is necessary to lower compression ratio.
+
+Supported protocols:
+
+- `webdav` - WebDav
+- `s3` - Amazon S3
+- `ssh` - via rsync (required connection to backup server via ssh key)
+
+Note: by default the script will do backups with all protocols. The script backup only with specified protocol if it set.
 
 ### Cron
 
@@ -106,6 +149,7 @@ Add lines in root crontab like below
     40 0 1 * * /bin/bash /path/to/script/backup.sh bases monthly # bases backup every 1st day every month in 00:40
     0 1 * * 1 /bin/bash /path/to/script/backup.sh files weekly 7 # files backup every monday in 01:00 with changed compression ratio
     0 4 1 * * /bin/bash /path/to/script/backup.sh files monthly 7 # files backup every 1st day every month in 04:00 with changed compression ratio
+    0 1 * * 1 /bin/bash /path/to/script/backup.sh files weekly 5 ssh # only files backup via rsync every monday in 01:00
 
 If you want receive script result to email add below to the top of crontab list (require working MTA on your server)
 
@@ -129,7 +173,8 @@ TODO
 - [ ] add ability to backup files and databases to own archive
 - [ ] add functionality for restore from backups
 - [ ] add support for local backup to mounted clouds disks
-- [ ] add support for backups via rsync
+- [x] ~~add support for backups via rsync~~
+- [ ] refactor this sh*t
 - [ ] make package with system daemon and flexible backups customization
 
 Changelog
