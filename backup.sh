@@ -293,7 +293,7 @@ do
 						fi
 
 						# upload new files to cloud
-						echo -n "Uploading to the cloud..."
+						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
 						if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
 							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
 						elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
@@ -364,8 +364,9 @@ do
 						RSYNC_EXCLUDE_ARRAY=($RSYNC_EXCLUDE_LIST)
 						printf "%s\n" "${RSYNC_EXCLUDE_ARRAY[@]}" > "$RSYNC_EXCLUDE_LIST_FILE"
 
-						echo -n "Syncing..."
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
+						echo -n "Uploading via ssh..."
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
@@ -513,7 +514,7 @@ do
 						fi
 
 						# upload new files to cloud
-						echo -n "Uploading to the cloud..."
+						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
 						if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
 							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
 						elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
@@ -545,8 +546,9 @@ do
 
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 
-						echo -n "Uploading..."
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --rsync-path="mkdir -p $CLOUD_SSH_PROJECT_PATH && rsync" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+						echo -n "Uploading via ssh..."
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
 
 						if [ $? -eq 0 ]; then
 							echo -n "${green}[OK]"
