@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.6.2
+# Version: 1.7.0
 
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
@@ -19,9 +19,9 @@ else
 	reset=$(tput sgr0)
 fi
 
-if [[ ! $# -eq 2 && ! $# -eq 3 ]]; then
+if [[ $# -lt 2 ]]; then
 	echo "Wrong number of parameters!"
-	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional)"
+	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 	exit 1
 fi
 
@@ -40,7 +40,7 @@ fi
 if [ $3 ]; then
 	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]; then
 		echo "Wrong compression ratio set!"
-		echo "Compression ratio must be set to 0|1|3|5|7|9"
+		echo "Compression ratio must be set to 0|1|3|5|7|9 (5 by default)"
 		exit 1
 	else
 		COMPRESS_RATIO=$3
@@ -49,13 +49,25 @@ else
 	COMPRESS_RATIO=5
 fi
 
+if [ $4 ]; then
+	if [[ $4 != "webdav" && $4 != "s3" && $4 != "ssh" ]]; then
+		echo "Wrong protocol set!"
+		echo "Protocol must be set to webdav|s3|ssh (all protocols enabled by default)"
+		exit 1
+	else
+		ENABLED_PROTO=$4
+	fi
+else
+	ENABLED_PROTO="all"
+fi
+
 if [ -z "$CLOUD_PROTO" ]; then
 	CLOUD_PROTO="webdav"
 fi
 
-if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" ]]; then
+if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" && "$CLOUD_PROTO" != "ssh" ]]; then
 	echo "Wrong cloud protocol given!"
-	echo "Protocol must be set to webdav or s3 (webdav by default)"
+	echo "Protocol must be set to webdav, s3 or ssh (webdav by default)"
 	exit 1
 fi
 
@@ -68,11 +80,44 @@ else
 	PERIOD=$2
 fi
 
+# get cloud ssh port if exists
+if ! [ -z "$CLOUD_SSH_HOST" ]; then
+	if [[ $CLOUD_SSH_HOST == *:* ]]; then
+		CLOUD_SSH_HOST_PORT=$(echo $CLOUD_SSH_HOST | awk -F ':' '{print $2}')
+		CLOUD_SSH_HOST=$(echo $CLOUD_SSH_HOST | awk -F ':' '{print $1}')
+	else
+		CLOUD_SSH_HOST_PORT=22
+	fi
+fi
+
+SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
+RSYNC_EXCLUDE_LIST_FILE="${TMP_PATH}/WebServerCloudBackups.tmp.rsync_exclude.${SCRIPT_INSTANCE_KEY}"
+
 # projects loop
 for i in "${!projects[@]}"
 do
-	# vars
+	# get project name
 	PROJECT_NAME=$(echo ${projects[$i]} | cut -f 1 -d ' ')
+
+	# get project proto
+	case "$PROJECT_NAME" in
+		*:webdav)
+			CLOUD_PROTO_PROJECT=webdav
+			;;
+		*:s3)
+			CLOUD_PROTO_PROJECT=s3
+			;;
+		*:ssh)
+			CLOUD_PROTO_PROJECT=ssh
+			;;
+		*)
+			CLOUD_PROTO_PROJECT=$CLOUD_PROTO
+			;;
+	esac
+
+	PROJECT_NAME=$(echo $PROJECT_NAME | awk -F ':' '{print $1}')
+
+	# get other vars
 	PROJECT_DB=$(echo ${projects[$i]} | cut -f 2 -d ' ')
 	PROJECT_FOLDER=$(echo ${projects[$i]} | cut -f 3 -d ' ' | sed "s/\/$//g")
 	PROJECT_ARCHIVE_PASS=$(echo ${projects[$i]} | cut -f 4 -d ' ')
@@ -100,253 +145,435 @@ do
 		mkdir $LAST_BACKUPS_PATH
 	fi
 
-	# check/create project folder in cloud (webdav)
-	if [[ $CLOUD_PROTO == "webdav" ]]; then
-		CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
-		touch "$CHECK_FILE"
-		CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
-		if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
-			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
-		else
-			curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
-		fi
-		rm "$CHECK_FILE"
-	fi
-
 	# files backup
 	if [[ $PROJECT_FOLDER != "false" && $1 == "files" ]]; then
 
-		# get last backup files list
-		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD ]]; then
-			LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD)
-		else
-			LAST_BACKUP_FILES=
+		SKIP=0
+
+		# get project cloud proto for project files
+		case "$PROJECT_FOLDER" in
+			*:webdav)
+				CLOUD_PROTO_PROJECT_FILES=webdav
+				;;
+			*:s3)
+				CLOUD_PROTO_PROJECT_FILES=s3
+				;;
+			*:ssh)
+				CLOUD_PROTO_PROJECT_FILES=ssh
+				;;
+			*)
+				CLOUD_PROTO_PROJECT_FILES=$CLOUD_PROTO_PROJECT
+				;;
+		esac
+
+		if [[ $ENABLED_PROTO != "all" && $ENABLED_PROTO != $CLOUD_PROTO_PROJECT_FILES ]]; then
+			SKIP=1
 		fi
 
-		# archiving
-		echo "# "$PROJECT_NAME" files backup"
-		ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_files_"$PERIOD".7z"
-		echo -n "Archiving..."
+		if [ $SKIP -eq 0 ]; then
 
-		if [ -d $PROJECT_FOLDER ]; then
+			# remove proto
+			PROJECT_FOLDER=$(echo $PROJECT_FOLDER | awk -F ':' '{print $1}')
 
-			EXCLUDE_7Z=""
-			EXCLUDE_RELATIVE_7Z=""
+			if [ -d $PROJECT_FOLDER ]; then
 
-			# exclude folders
-			if ! [ -z "$EXCLUDE" ]; then
-				EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $EXCLUDE | sed 's/\ /\ -xr!/g')
-			fi
-			if ! [ -z "$EXCLUDE_RELATIVE" ]; then
-				EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-			fi
+				if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" || $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
 
-			# hourly exclude folders
-			if [[ $2 == 'hourly' ]]; then
-				if ! [ -z "$HOURLY_EXCLUDE" ]; then
-					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $HOURLY_EXCLUDE | sed 's/\ /\ -xr!/g')
-				fi
-				if ! [ -z "$HOURLY_EXCLUDE_RELATIVE" ]; then
-					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $HOURLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-				fi
-			fi
-
-			# daily exclude folders
-			if [[ $2 == 'daily' ]]; then
-				if ! [ -z "$DAILY_EXCLUDE" ]; then
-					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $DAILY_EXCLUDE | sed 's/\ /\ -xr!/g')
-				fi
-				if ! [ -z "$DAILY_EXCLUDE_RELATIVE" ]; then
-					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $DAILY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-				fi
-			fi
-
-			# weekly exclude folders
-			if [[ $2 == 'weekly' ]]; then
-				if ! [ -z "$WEEKLY_EXCLUDE" ]; then
-					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $WEEKLY_EXCLUDE | sed 's/\ /\ -xr!/g')
-				fi
-				if ! [ -z "$WEEKLY_EXCLUDE_RELATIVE" ]; then
-					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $WEEKLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-				fi
-			fi
-
-			# monthly exclude folders
-			if [[ $2 == 'monthly' ]]; then
-				if ! [ -z "$MONTHLY_EXCLUDE" ]; then
-					EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $MONTHLY_EXCLUDE | sed 's/\ /\ -xr!/g')
-				fi
-				if ! [ -z "$MONTHLY_EXCLUDE_RELATIVE" ]; then
-					EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $MONTHLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-				fi
-			fi
-
-			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
-
-			# remove part postfix if only one part
-			if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
-				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
-			fi
-
-			if [ -f $ARCHIVE_PATH ]; then
-				echo -n "${green}[OK]"
-				ARCHIVE=1
-			elif [ -f $ARCHIVE_PATH".001" ]; then
-				echo -n "${green}[OK]"
-				ARCHIVE=1
-			else
-				echo -n "${red}[fail]"
-				ARCHIVE=0
-			fi
-			echo -n "${reset}"
-			echo
-
-			if [ $ARCHIVE == 1 ]; then
-
-				# remove old files from cloud
-				if ! [ -z $LAST_BACKUP_FILES ]; then
+					# check/create project folder in cloud (webdav)
 					if [[ $CLOUD_PROTO == "webdav" ]]; then
-						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
-					elif [[ $CLOUD_PROTO == "s3" ]]; then
-						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
-						for FILE in $LAST_BACKUP_FILES
-						do
-							s3cmd rm "$FILE" 2>/dev/null > /dev/null
-						done
+						CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+						touch "$CHECK_FILE"
+						CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+						if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
+						else
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+						fi
+						rm "$CHECK_FILE"
 					fi
+
+					# get last backup files list
+					if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD ]]; then
+						LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD)
+					else
+						LAST_BACKUP_FILES=
+					fi
+
+					# archiving
+					echo "# "$PROJECT_NAME" files backup"
+					ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_files_"$PERIOD".7z"
+					echo -n "Archiving..."
+
+					EXCLUDE_7Z=""
+					EXCLUDE_RELATIVE_7Z=""
+
+					# exclude folders
+					if ! [ -z "$EXCLUDE" ]; then
+						EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $EXCLUDE | sed 's/\ /\ -xr!/g')
+					fi
+					if ! [ -z "$EXCLUDE_RELATIVE" ]; then
+						EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+					fi
+
+					# hourly exclude folders
+					if [[ $2 == 'hourly' ]]; then
+						if ! [ -z "$HOURLY_EXCLUDE" ]; then
+							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $HOURLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+						fi
+						if ! [ -z "$HOURLY_EXCLUDE_RELATIVE" ]; then
+							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $HOURLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+						fi
+					fi
+
+					# daily exclude folders
+					if [[ $2 == 'daily' ]]; then
+						if ! [ -z "$DAILY_EXCLUDE" ]; then
+							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $DAILY_EXCLUDE | sed 's/\ /\ -xr!/g')
+						fi
+						if ! [ -z "$DAILY_EXCLUDE_RELATIVE" ]; then
+							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $DAILY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+						fi
+					fi
+
+					# weekly exclude folders
+					if [[ $2 == 'weekly' ]]; then
+						if ! [ -z "$WEEKLY_EXCLUDE" ]; then
+							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $WEEKLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+						fi
+						if ! [ -z "$WEEKLY_EXCLUDE_RELATIVE" ]; then
+							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $WEEKLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+						fi
+					fi
+
+					# monthly exclude folders
+					if [[ $2 == 'monthly' ]]; then
+						if ! [ -z "$MONTHLY_EXCLUDE" ]; then
+							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo $MONTHLY_EXCLUDE | sed 's/\ /\ -xr!/g')
+						fi
+						if ! [ -z "$MONTHLY_EXCLUDE_RELATIVE" ]; then
+							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo $MONTHLY_EXCLUDE_RELATIVE | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+						fi
+					fi
+
+					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
+
+					# remove part postfix if only one part
+					if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
+						mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
+					fi
+
+					if [ -f $ARCHIVE_PATH ]; then
+						echo -n "${green}[OK]"
+						ARCHIVE=1
+					elif [ -f $ARCHIVE_PATH".001" ]; then
+						echo -n "${green}[OK]"
+						ARCHIVE=1
+					else
+						echo -n "${red}[fail]"
+						ARCHIVE=0
+					fi
+					echo -n "${reset}"
+					echo
+
+					if [ $ARCHIVE == 1 ]; then
+
+						# remove old files from cloud
+						if ! [ -z $LAST_BACKUP_FILES ]; then
+							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+								curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+								for FILE in $LAST_BACKUP_FILES
+								do
+									s3cmd rm "$FILE" 2>/dev/null > /dev/null
+								done
+							fi
+						fi
+
+						# upload new files to cloud
+						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
+						if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+						elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+						fi
+						if [ $? == 0 ]; then
+							echo -n "${green}[OK]"
+							NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+							echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD
+						else
+							echo -n "${red}[fail]"
+						fi
+						echo -n "${reset}"
+						echo
+
+						# cleanup
+						rm $ARCHIVE_PATH*
+
+					else
+						echo "Try lower compress ratio."
+					fi
+
 				fi
 
-				# upload new files to cloud
-				echo -n "Uploading to the cloud..."
-				if [[ $CLOUD_PROTO == "webdav" ]]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
-				elif [[ $CLOUD_PROTO == "s3" ]]; then
-					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+				if [[ $CLOUD_PROTO_PROJECT_FILES == "ssh" ]]; then
+
+					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
+
+						echo "# "$PROJECT_NAME" files backup"
+
+						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
+						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}/${PROJECT_NAME}_files_${PERIOD}"
+
+						# exclude folders
+						if ! [ -z "$EXCLUDE" ]; then
+							RSYNC_EXCLUDE_LIST="$EXCLUDE $EXCLUDE_RELATIVE"
+						fi
+
+						# hourly exclude folders
+						if [[ $2 == 'hourly' ]]; then
+							if ! [ -z "$HOURLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$HOURLY_EXCLUDE $HOURLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# daily exclude folders
+						if [[ $2 == 'daily' ]]; then
+							if ! [ -z "$DAILY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$DAILY_EXCLUDE $DAILY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# weekly exclude folders
+						if [[ $2 == 'weekly' ]]; then
+							if ! [ -z "$WEEKLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$WEEKLY_EXCLUDE $WEEKLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# monthly exclude folders
+						if [[ $2 == 'monthly' ]]; then
+							if ! [ -z "$MONTHLY_EXCLUDE" ]; then
+								RSYNC_EXCLUDE_LIST="$MONTHLY_EXCLUDE $MONTHLY_EXCLUDE_RELATIVE"
+							fi
+						fi
+
+						# prepare exclude list file
+						RSYNC_EXCLUDE_ARRAY=($RSYNC_EXCLUDE_LIST)
+						printf "%s\n" "${RSYNC_EXCLUDE_ARRAY[@]}" > "$RSYNC_EXCLUDE_LIST_FILE"
+
+						echo -n "Uploading via ssh..."
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
+
+						if [ $? -eq 0 ]; then
+							echo -n "${green}[OK]"
+						else
+							echo -n "${red}[fail]"
+						fi
+						echo -n "${reset}"
+						echo
+
+						rm -f "$RSYNC_EXCLUDE_LIST_FILE"
+
+					else
+
+						echo -n "Project files proto is ssh, but CLOUD_HOST not defined!"
+						echo -n "${red}[fail]"
+						echo -n "${reset}"
+						echo
+
+					fi
+
 				fi
-				if [ $? == 0 ]; then
-					echo -n "${green}[OK]"
-					NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
-					echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD
-				else
-					echo -n "${red}[fail]"
-				fi
+
+			else
+
+				echo -n "Project folder not found!"
+				echo -n "${red}[fail]"
 				echo -n "${reset}"
 				echo
 
-				# cleanup
-				rm $ARCHIVE_PATH*
-
-			else
-				echo "Try lower compress ratio."
 			fi
-
-		else
-
-			echo -n "Project folder not found!"
-			echo -n "${red}[fail]"
-			echo -n "${reset}"
 			echo
 
 		fi
-		echo
 
 	fi
 
 	# bases backup
 	if [[ $PROJECT_DB != "false" && $1 == "bases" ]]; then
 
-		# get last backup files list
-		if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD ]]; then
-			LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD)
-		else
-			LAST_BACKUP_FILES=
+		SKIP=0
+
+		# get project cloud proto for project database
+		case "$PROJECT_DB" in
+			*:webdav)
+				CLOUD_PROTO_PROJECT_DB=webdav
+				;;
+			*:s3)
+				CLOUD_PROTO_PROJECT_DB=s3
+				;;
+			*:ssh)
+				CLOUD_PROTO_PROJECT_DB=ssh
+				;;
+			*)
+				CLOUD_PROTO_PROJECT_DB=$CLOUD_PROTO_PROJECT
+				;;
+		esac
+
+		if [[ $ENABLED_PROTO != "all" && $ENABLED_PROTO != $CLOUD_PROTO_PROJECT_DB ]]; then
+			SKIP=1
 		fi
 
-		echo "# "$PROJECT_NAME" database backup"
-		MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql.gz"
-		ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".7z"
+		if [ $SKIP -eq 0 ]; then
 
-		# base dumping
-		echo -n "Dump creation..."
-		mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
+			# remove proto
+			PROJECT_DB=$(echo $PROJECT_DB | awk -F ':' '{print $1}')
 
-		if [ $? == 0 ]; then
-			echo -n "${green}[OK]"
-			DUMP=1
-		else
-			echo -n "${red}[fail]"
-			DUMP=0
-		fi
-		echo -n "${reset}"
-		echo
+			echo "# "$PROJECT_NAME" database backup"
+			MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql.gz"
 
-		if [ $DUMP == 1 ]; then
+			# base dumping
+			echo -n "Dump creation..."
+			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
 
-			# archiving
-			echo -n "Archiving..."
-			7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
-
-			# remove part postfix if only one part
-			if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
-				mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
-			fi
-
-			if [ -f $ARCHIVE_PATH ]; then
+			if [ $? == 0 ]; then
 				echo -n "${green}[OK]"
-				ARCHIVE=1
-			elif [ -f $ARCHIVE_PATH".001" ]; then
-				echo -n "${green}[OK]"
-				ARCHIVE=1
+				DUMP=1
 			else
 				echo -n "${red}[fail]"
-				ARCHIVE=0
+				DUMP=0
 			fi
 			echo -n "${reset}"
 			echo
 
-			if [ $ARCHIVE == 1 ]; then
+			if [ $DUMP == 1 ]; then
 
-				# remove old files from cloud
-				if ! [ -z $LAST_BACKUP_FILES ]; then
+				if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" || $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+
+					# check/create project folder in cloud (webdav)
 					if [[ $CLOUD_PROTO == "webdav" ]]; then
-						curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
-					elif [[ $CLOUD_PROTO == "s3" ]]; then
-						LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
-						for FILE in $LAST_BACKUP_FILES
-						do
-							s3cmd rm "$FILE" 2>/dev/null > /dev/null
-						done
+						CHECK_FILE=$(echo $TMP_PATH | sed "s/\/$//g")"/check_folder_in_cloud"
+						touch "$CHECK_FILE"
+						CLOUD_FOLDER_CHECK=$(curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "$CHECK_FILE" $PROJECT_CLOUD_PATH"/" 2>&1 >/dev/null)
+						if ! [ -z "$CLOUD_FOLDER_CHECK" ]; then
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X MKCOL $PROJECT_CLOUD_PATH > /dev/null
+						else
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE $PROJECT_CLOUD_PATH"/check_folder_in_cloud" > /dev/null
+						fi
+						rm "$CHECK_FILE"
 					fi
+
+					# get last backup files list
+					if [[ -f $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD ]]; then
+						LAST_BACKUP_FILES=$(cat $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD)
+					else
+						LAST_BACKUP_FILES=
+					fi
+
+					ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".7z"
+
+					# archiving
+					echo -n "Archiving..."
+					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+
+					# remove part postfix if only one part
+					if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
+						mv $ARCHIVE_PATH".001" $ARCHIVE_PATH
+					fi
+
+					if [ -f $ARCHIVE_PATH ]; then
+						echo -n "${green}[OK]"
+						ARCHIVE=1
+					elif [ -f $ARCHIVE_PATH".001" ]; then
+						echo -n "${green}[OK]"
+						ARCHIVE=1
+					else
+						echo -n "${red}[fail]"
+						ARCHIVE=0
+					fi
+					echo -n "${reset}"
+					echo
+
+					if [ $ARCHIVE == 1 ]; then
+
+						# remove old files from cloud
+						if ! [ -z $LAST_BACKUP_FILES ]; then
+							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+								curl -fsS --user $CLOUD_USER:$CLOUD_PASS -X DELETE "{$LAST_BACKUP_FILES}" 2>/dev/null > /dev/null
+							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+								for FILE in $LAST_BACKUP_FILES
+								do
+									s3cmd rm "$FILE" 2>/dev/null > /dev/null
+								done
+							fi
+						fi
+
+						# upload new files to cloud
+						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
+						if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+						elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+						fi
+						if [ $? == 0 ]
+						then
+							echo -n "${green}[OK]"
+							NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+							echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD
+						else
+							echo -n "${red}[fail]"
+						fi
+						echo -n "${reset}"
+						echo
+
+						# cleanup
+						rm $ARCHIVE_PATH*
+
+					else
+						echo "Try lower compress ratio."
+					fi
+
 				fi
 
-				# upload new files to cloud
-				echo -n "Uploading to the cloud..."
-				if [[ $CLOUD_PROTO == "webdav" ]]; then
-					curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
-				elif [[ $CLOUD_PROTO == "s3" ]]; then
-					s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
-				fi
-				if [ $? == 0 ]
-				then
-					echo -n "${green}[OK]"
-					NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
-					echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD
-				else
-					echo -n "${red}[fail]"
-				fi
-				echo -n "${reset}"
-				echo
+				if [[ $CLOUD_PROTO_PROJECT_DB == "ssh" ]]; then
 
-				# cleanup
-				rm $ARCHIVE_PATH*
-			else
-				echo "Try lower compress ratio."
+					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
+
+						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
+
+						echo -n "Uploading via ssh..."
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+
+						if [ $? -eq 0 ]; then
+							echo -n "${green}[OK]"
+						else
+							echo -n "${red}[fail]"
+						fi
+						echo -n "${reset}"
+						echo
+
+					else
+
+						echo -n "Project db proto is ssh, but CLOUD_HOST not defined!"
+						echo -n "${red}[fail]"
+						echo -n "${reset}"
+						echo
+
+					fi
+
+				fi
+
 			fi
-		fi
 
-		# cleanup
-		unlink $MYSQL_DUMP_PATH
-		echo
+			# cleanup
+			unlink $MYSQL_DUMP_PATH
+			echo
+
+		fi
 
 	fi
 done
