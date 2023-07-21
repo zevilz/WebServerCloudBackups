@@ -5,8 +5,6 @@
 # License: MIT
 # Version: 1.7.0
 
-# TODO: write rsync output to log
-
 CUR_PATH=$(dirname $0)
 . $CUR_PATH"/backup.conf"
 
