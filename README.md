@@ -1,16 +1,14 @@
 # WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.7.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
-Requirements
-------------
+## Requirements
 
 - curl (for WebDAV)
 - [s3cmd](https://s3tools.org/s3cmd) (for S3)
 - 7zip archiver (usually **p7zip-rar** **p7zip-full** on deb-based distros)
 - connection to backup server via SSH key without passphrase (for ssh)
 
-Configuring
------------
+## Configuring
 
 1. Login server in root user
 
@@ -46,23 +44,27 @@ Note: relative and not relative lists will be united if using ssh proto.
 projects[unique_key]="<project_name> <db_name> <project_folder> <project_archive_password>"
 ```
 
-Example:
+Parameters in quotes must be written through spaces and all required.
+
+Parameters:
+
+- **<project_name>** - project name, you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**
+- **<db_name>** - database name, type **false** if database backup is not required for project
+- **<project_folder>** - full path to project folder, type **false** if files backup is not required for project
+- **<project_archive_password>** - project archive password, type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**
+
+You can specify backup method to project or to files or database separatelly. Just add protocol to project name or database name or files path via colon.
+
+NOTE: you can't use WebDav and S3 protocols together (only WebDav+SSH or S3+SSH). Ability to use all protocols at the same time will be added later.
+
+### Examples
+
+Use default protocol defined in **CLOUD_PROTO** var:
 
 ```bash
 projects[1]="domain.org false /home/user/www/domain.org false"
 projects[2]="domain.com com_db /home/user/www/domain.com 1234"
 ```
-
-Parameters in quotes must be written through spaces and all required.
-
-Parameters:
-
-- project name - you **must** create folder with same name in the cloud folder, defined in **CLOUD_PATH**
-- database name - type **false** if database backup is not required for project
-- full path to project folder - type **false** if files backup is not required for project
-- project archive password - type **false** if password is not required for project archive or using global password, defined in **GLOBAL_ARCHIVE_PASS**
-
-You can specify backup method to project or to files or database separatelly. Just add protocol to project name or database name or files path via colon.
 
 Do backup all project via ssh:
 
@@ -91,8 +93,7 @@ CLOUD_PROTO="webdav"
 projects[1]="domain.com com_db /home/user/www/domain.com:ssh false"
 ```
 
-Usage
------
+## Usage
 
 ### Directly in shell
 
@@ -157,15 +158,16 @@ If you want receive script result to email add below to the top of crontab list 
 
     MAILTO=name@domain.com
 
-Tested on
----------
-- Hetzner Storage Box (WebDav)
+## Tested on
+
+- Hetzner Storage Box (WebDav, SSH)
 - Yandex Disk (WebDav, not recommended for big files)
 - Mail.ru Cloud (WebDav)
 - DigitalOcean Spaces (S3)
+- backup servers (SSH)
 
-TODO
-----
+## TODO
+
 - [ ] add support for others database types backup
 - [x] ~~add support for partitioning archives into specified size~~
 - [x] ~~add automatically checking/creating folders in cloud~~
@@ -176,12 +178,13 @@ TODO
 - [ ] add functionality for restore from backups
 - [ ] add support for local backup to mounted clouds disks
 - [x] ~~add support for backups via rsync~~
-- [ ] refactor this sh*t
 - [ ] make package with system daemon and flexible backups customization
+- [ ] refactor this sh*t
 
 Changelog
 ---------
 
+- 21.07.2023 - 1.7.0 - [added support for backups via rsync](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
 - 14.03.2022 - 1.6.2 - [added new parameters to mysqldump command](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2) + gzip compression
 - 17.12.2020 - 1.6.1 - fixed archive filename for hourly backup period
 - 13.12.2020 - 1.6.0 - added hourly backup period
