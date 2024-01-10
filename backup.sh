@@ -3,10 +3,33 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.7.0
+# Version: 1.8.0
+
+checkFilePermissions()
+{
+	if [ -w "$1" ] && ! [ -f "$1" ] || ! [ -f "$1" ] && ! [ -w "$(dirname $1)" ] || [ -f "$1" ] && ! [ -w "$1" ] || ! [ -d "$(dirname $1)" ] || [ -d "$1" ]; then
+		echo "Can't write into $1 or it not a file!"
+		exit 1
+	fi
+}
+
+pushToLog()
+{
+	if [[ $# -eq 1 ]]; then
+		echo -e "[$(date +%Y-%m-%d\ %H:%M:%S)] WebServerCloudBackups: $1" >> "$SCRIPT_LOG_PATH"
+	fi
+}
 
 CUR_PATH=$(dirname $0)
+SCRIPT_LOG_PATH=
+
 . $CUR_PATH"/backup.conf"
+
+if [ -z "$SCRIPT_LOG_PATH" ]; then
+	SCRIPT_LOG_PATH="${CUR_PATH}/backups.log"
+fi
+
+checkFilePermissions "$SCRIPT_LOG_PATH"
 
 if [ "Z$(ps o comm="" -p $(ps o ppid="" -p $$))" == "Zcron" -o \
      "Z$(ps o comm="" -p $(ps o ppid="" -p $(ps o ppid="" -p $$)))" == "Zcron" ]; then
