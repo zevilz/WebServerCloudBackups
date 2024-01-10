@@ -15,13 +15,15 @@ checkFilePermissions()
 
 pushToLog()
 {
-	if [[ $# -eq 1 ]]; then
-		echo -e "[$(date +%Y-%m-%d\ %H:%M:%S)] WebServerCloudBackups: $1" >> "$SCRIPT_LOG_PATH"
-	fi
+	if [ -n "$SCRIPT_LOG_PATH" ]; then
+		if [[ $# -eq 1 ]]; then
+			echo -e "[$(date +%Y-%m-%d\ %H:%M:%S)] WebServerCloudBackups: $1" >> "$SCRIPT_LOG_PATH"
+		fi
 
-	if [ -f "$SCRIPT_ERRORS_TMP" ]; then
-		cat "$SCRIPT_ERRORS_TMP" >> "$SCRIPT_LOG_PATH"
-		rm "$SCRIPT_ERRORS_TMP"
+		if [ -f "$SCRIPT_ERRORS_TMP" ]; then
+			cat "$SCRIPT_ERRORS_TMP" >> "$SCRIPT_LOG_PATH"
+			rm "$SCRIPT_ERRORS_TMP"
+		fi
 	fi
 }
 
@@ -43,11 +45,9 @@ else
 	reset=$(tput sgr0)
 fi
 
-if [ -z "$SCRIPT_LOG_PATH" ]; then
-	SCRIPT_LOG_PATH="${CUR_PATH}/backups.log"
+if [ -n "$SCRIPT_LOG_PATH" ]; then
+	checkFilePermissions "$SCRIPT_LOG_PATH"
 fi
-
-checkFilePermissions "$SCRIPT_LOG_PATH"
 
 if [[ $# -lt 2 ]]; then
 	pushToLog "[ERROR] - Wrong number of parameters"
