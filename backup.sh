@@ -18,10 +18,17 @@ pushToLog()
 	if [[ $# -eq 1 ]]; then
 		echo -e "[$(date +%Y-%m-%d\ %H:%M:%S)] WebServerCloudBackups: $1" >> "$SCRIPT_LOG_PATH"
 	fi
+
+	if [ -f "$SCRIPT_ERRORS_TMP" ]; then
+		cat "$SCRIPT_ERRORS_TMP" >> "$SCRIPT_LOG_PATH"
+		rm "$SCRIPT_ERRORS_TMP"
+	fi
 }
 
 CUR_PATH=$(dirname $0)
 SCRIPT_LOG_PATH=
+SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
+SCRIPT_ERRORS_TMP="/tmp/wscb.tmp.${SCRIPT_INSTANCE_KEY}"
 
 . $CUR_PATH"/backup.conf"
 
@@ -233,6 +240,8 @@ do
 					ARCHIVE_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_files_"$PERIOD".7z"
 					echo -n "Archiving..."
 
+					pushToLog "[NOTICE] - $PROJECT_NAME files backup (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+
 					EXCLUDE_7Z=""
 					EXCLUDE_RELATIVE_7Z=""
 
@@ -284,7 +293,7 @@ do
 						fi
 					fi
 
-					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null
+					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $PROJECT_FOLDER$EXCLUDE_7Z$EXCLUDE_RELATIVE_7Z > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 
 					# remove part postfix if only one part
 					if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
@@ -300,6 +309,7 @@ do
 					else
 						echo -n "${red}[fail]"
 						ARCHIVE=0
+						#pushToLog "[ERROR] - $PROJECT_NAME files archive not created (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 					fi
 					echo -n "${reset}"
 					echo
@@ -321,12 +331,13 @@ do
 
 						# upload new files to cloud
 						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
+						UPLOAD_FAIL=0
 						if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 						elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 						fi
-						if [ $? == 0 ]; then
+						if [ "$UPLOAD_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
 							NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
 							echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_files_"$PERIOD
@@ -350,6 +361,8 @@ do
 					if ! [ -z "$CLOUD_SSH_HOST" ] && ! [ -z "$CLOUD_SSH_HOST_USER" ]; then
 
 						echo "# "$PROJECT_NAME" files backup"
+
+						pushToLog "[NOTICE] - $PROJECT_NAME files backup (proto: ssh; period: ${PERIOD})"
 
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}/${PROJECT_NAME}_files_${PERIOD}"
@@ -392,10 +405,11 @@ do
 						printf "%s\n" "${RSYNC_EXCLUDE_ARRAY[@]}" > "$RSYNC_EXCLUDE_LIST_FILE"
 
 						echo -n "Uploading via ssh..."
-						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/"
+						UPLOAD_FAIL=0
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 
-						if [ $? -eq 0 ]; then
+						if [ "$UPLOAD_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
 						else
 							echo -n "${red}[fail]"
@@ -406,7 +420,7 @@ do
 						rm -f "$RSYNC_EXCLUDE_LIST_FILE"
 
 					else
-
+						pushToLog "[ERROR] - Project $PROJECT_NAME files proto is ssh, but CLOUD_HOST not defined (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 						echo -n "Project files proto is ssh, but CLOUD_HOST not defined!"
 						echo -n "${red}[fail]"
 						echo -n "${reset}"
@@ -417,7 +431,7 @@ do
 				fi
 
 			else
-
+				pushToLog "[ERROR] - Project $PROJECT_NAME folder not found (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 				echo -n "Project folder not found!"
 				echo -n "${red}[fail]"
 				echo -n "${reset}"
@@ -463,16 +477,20 @@ do
 			echo "# "$PROJECT_NAME" database backup"
 			MYSQL_DUMP_PATH=$(echo $TMP_PATH | sed "s/\/$//g")"/"$PROJECT_NAME"_base_"$PERIOD".sql.gz"
 
+			pushToLog "[NOTICE] - $PROJECT_NAME database backup (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+
 			# base dumping
 			echo -n "Dump creation..."
-			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB | gzip > $MYSQL_DUMP_PATH
+			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u $MYSQL_USER --password=$MYSQL_PASS $PROJECT_DB 2>"$SCRIPT_ERRORS_TMP" | gzip > $MYSQL_DUMP_PATH
+			DUMP_ERRORS=$(cat "$SCRIPT_ERRORS_TMP" 2>/dev/null | grep -v 'Using a password' 2>&1)
 
-			if [ $? == 0 ]; then
+			if [ -z "$DUMP_ERRORS" ]; then
 				echo -n "${green}[OK]"
 				DUMP=1
 			else
 				echo -n "${red}[fail]"
 				DUMP=0
+				pushToLog "[ERROR] - Can't create project $PROJECT_NAME database dump (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 			fi
 			echo -n "${reset}"
 			echo
@@ -505,7 +523,7 @@ do
 
 					# archiving
 					echo -n "Archiving..."
-					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null
+					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS $ARCHIVE_PATH $MYSQL_DUMP_PATH > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 
 					# remove part postfix if only one part
 					if [[ $(ls $ARCHIVE_PATH.* 2>/dev/null | wc -l) -eq 1 ]]; then
@@ -521,6 +539,7 @@ do
 					else
 						echo -n "${red}[fail]"
 						ARCHIVE=0
+						#pushToLog "[ERROR] - $PROJECT_NAME database archive not created (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 					fi
 					echo -n "${reset}"
 					echo
@@ -542,13 +561,13 @@ do
 
 						# upload new files to cloud
 						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
+						UPLOAD_FAIL=0
 						if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null
+							curl -fsS --user $CLOUD_USER:$CLOUD_PASS -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" $PROJECT_CLOUD_PATH"/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 						elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null
+							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') $PROJECT_CLOUD_PATH"/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 						fi
-						if [ $? == 0 ]
-						then
+						if [ "$UPLOAD_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
 							NEW_BACKUP_FILES=$PROJECT_CLOUD_PATH"/"$(ls $ARCHIVE_PATH* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
 							echo $NEW_BACKUP_FILES > $LAST_BACKUPS_PATH"/"$PROJECT_NAME"_base_"$PERIOD
@@ -574,10 +593,11 @@ do
 						CLOUD_SSH_PROJECT_PATH=$(echo $CLOUD_SSH_HOST_PATH | sed "s/\/$//g")"/${PROJECT_NAME}"
 
 						echo -n "Uploading via ssh..."
-						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH"
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/"
+						UPLOAD_FAIL=0
+						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p $CLOUD_SSH_PROJECT_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1 }
 
-						if [ $? -eq 0 ]; then
+						if [ "$UPLOAD_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
 						else
 							echo -n "${red}[fail]"
@@ -586,7 +606,7 @@ do
 						echo
 
 					else
-
+						pushToLog "[ERROR] - Project $PROJECT_NAME database proto is ssh, but CLOUD_HOST not defined (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 						echo -n "Project db proto is ssh, but CLOUD_HOST not defined!"
 						echo -n "${red}[fail]"
 						echo -n "${reset}"
