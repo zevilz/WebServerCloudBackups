@@ -25,12 +25,6 @@ SCRIPT_LOG_PATH=
 
 . $CUR_PATH"/backup.conf"
 
-if [ -z "$SCRIPT_LOG_PATH" ]; then
-	SCRIPT_LOG_PATH="${CUR_PATH}/backups.log"
-fi
-
-checkFilePermissions "$SCRIPT_LOG_PATH"
-
 if [ "Z$(ps o comm="" -p $(ps o ppid="" -p $$))" == "Zcron" -o \
      "Z$(ps o comm="" -p $(ps o ppid="" -p $(ps o ppid="" -p $$)))" == "Zcron" ]; then
 	red=
@@ -42,19 +36,28 @@ else
 	reset=$(tput sgr0)
 fi
 
+if [ -z "$SCRIPT_LOG_PATH" ]; then
+	SCRIPT_LOG_PATH="${CUR_PATH}/backups.log"
+fi
+
+checkFilePermissions "$SCRIPT_LOG_PATH"
+
 if [[ $# -lt 2 ]]; then
+	pushToLog "[ERROR] - Wrong number of parameters"
 	echo "Wrong number of parameters!"
 	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 	exit 1
 fi
 
 if [[ $1 != "files" && $1 != "bases" ]]; then
-	echo "Wrong type set!"
+	pushToLog "[ERROR] - Wrong backup type set"
+	echo "Wrong backup type set!"
 	echo "Type must be set to \"files\" or \"bases\""
 	exit 1
 fi
 
 if [[ $2 != "hourly" && $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
+	pushToLog "[ERROR] - Wrong period set"
 	echo "Wrong period set!"
 	echo "Period must be set to \"hourly\" or \"daily\" or \"weekly\" or \"monthly\""
 	exit 1
@@ -62,6 +65,7 @@ fi
 
 if [ $3 ]; then
 	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]; then
+		pushToLog "[ERROR] - Wrong compression ratio set"
 		echo "Wrong compression ratio set!"
 		echo "Compression ratio must be set to 0|1|3|5|7|9 (5 by default)"
 		exit 1
@@ -74,6 +78,7 @@ fi
 
 if [ $4 ]; then
 	if [[ $4 != "webdav" && $4 != "s3" && $4 != "ssh" ]]; then
+		pushToLog "[ERROR] - Wrong protocol set"
 		echo "Wrong protocol set!"
 		echo "Protocol must be set to webdav|s3|ssh (all protocols enabled by default)"
 		exit 1
@@ -89,6 +94,7 @@ if [ -z "$CLOUD_PROTO" ]; then
 fi
 
 if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" && "$CLOUD_PROTO" != "ssh" ]]; then
+	pushToLog "[ERROR] - Wrong cloud protocol given"
 	echo "Wrong cloud protocol given!"
 	echo "Protocol must be set to webdav, s3 or ssh (webdav by default)"
 	exit 1
