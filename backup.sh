@@ -345,12 +345,12 @@ do
 						# remove old files from cloud
 						if [ -n "$LAST_BACKUP_FILES" ]; then
 							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>/dev/null
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
 								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
 
 								for FILE in $LAST_BACKUP_FILES; do
-									s3cmd rm "$FILE" > /dev/null 2>/dev/null
+									s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; filename: ${FILE})"
 								done
 							fi
 						fi
@@ -589,12 +589,12 @@ do
 						# remove old files from cloud
 						if [ -n "$LAST_BACKUP_FILES" ]; then
 							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" 2>/dev/null > /dev/null
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archives (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
 								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
 
 								for FILE in $LAST_BACKUP_FILES; do
-									s3cmd rm "$FILE" > /dev/null 2>/dev/null
+									s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; filename: ${FILE})"
 								done
 							fi
 						fi
