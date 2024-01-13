@@ -226,8 +226,16 @@ do
 
 			if [ -d "$PROJECT_FOLDER" ]; then
 				if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" || $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+					echo "# $PROJECT_NAME files backup"
+
+					pushToLog "[NOTICE] - $PROJECT_NAME files backup (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+
+					CLOUD_CHECK_FAIL=0
+
 					# check/create project folder in cloud (webdav)
 					if [[ $CLOUD_PROTO == "webdav" ]]; then
+						echo -n "Checking cloud..."
+
 						CHECK_FILE=$(echo "$TMP_PATH" | sed "s/\/$//g")"/check_folder_in_cloud"
 
 						touch "$CHECK_FILE"
@@ -235,154 +243,162 @@ do
 						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}/" 2>&1 >/dev/null)
 
 						if [ -n "$CLOUD_FOLDER_CHECK" ]; then
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"; CLOUD_CHECK_FAIL=1; }
 						else
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
 						fi
 
 						rm "$CHECK_FILE"
-					fi
 
-					# get last backup files list
-					if [[ -f "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}" ]]; then
-						LAST_BACKUP_FILES=$(cat "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}")
-					else
-						LAST_BACKUP_FILES=
-					fi
-
-					# archiving
-					echo "# $PROJECT_NAME files backup"
-
-					ARCHIVE_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")/"${PROJECT_NAME}_files_${PERIOD}.7z"
-
-					echo -n "Archiving..."
-
-					pushToLog "[NOTICE] - $PROJECT_NAME files backup (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
-
-					EXCLUDE_7Z=""
-					EXCLUDE_RELATIVE_7Z=""
-
-					# exclude folders
-					if [ -n "$EXCLUDE" ]; then
-						EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$EXCLUDE" | sed 's/\ /\ -xr!/g')
-					fi
-
-					if [ -n "$EXCLUDE_RELATIVE" ]; then
-						EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-					fi
-
-					# hourly exclude folders
-					if [[ $2 == 'hourly' ]]; then
-						if [ -n "$HOURLY_EXCLUDE" ]; then
-							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$HOURLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
-						fi
-
-						if [ -n "$HOURLY_EXCLUDE_RELATIVE" ]; then
-							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$HOURLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-						fi
-					fi
-
-					# daily exclude folders
-					if [[ $2 == 'daily' ]]; then
-						if [ -n "$DAILY_EXCLUDE" ]; then
-							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$DAILY_EXCLUDE" | sed 's/\ /\ -xr!/g')
-						fi
-
-						if [ -n "$DAILY_EXCLUDE_RELATIVE" ]; then
-							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$DAILY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-						fi
-					fi
-
-					# weekly exclude folders
-					if [[ $2 == 'weekly' ]]; then
-						if [ -n "$WEEKLY_EXCLUDE" ]; then
-							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$WEEKLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
-						fi
-
-						if [ -n "$WEEKLY_EXCLUDE_RELATIVE" ]; then
-							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$WEEKLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-						fi
-					fi
-
-					# monthly exclude folders
-					if [[ $2 == 'monthly' ]]; then
-						if [ -n "$MONTHLY_EXCLUDE" ]; then
-							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$MONTHLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
-						fi
-
-						if [ -n "$MONTHLY_EXCLUDE_RELATIVE" ]; then
-							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$MONTHLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
-						fi
-					fi
-
-					7z a -mx$COMPRESS_RATIO -mhe=on $SPLIT_7Z $ARCHIVE_PASS "$ARCHIVE_PATH" "$PROJECT_FOLDER" $EXCLUDE_7Z $EXCLUDE_RELATIVE_7Z > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
-
-					# remove part postfix if only one part
-					if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
-						mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
-					fi
-
-					if [ -f "$ARCHIVE_PATH" ]; then
-						echo -n "${green}[OK]"
-
-						ARCHIVE=1
-					elif [ -f "${ARCHIVE_PATH}.001" ]; then
-						echo -n "${green}[OK]"
-
-						ARCHIVE=1
-					else
-						echo -n "${red}[fail]"
-
-						ARCHIVE=0
-
-						#pushToLog "[ERROR] - $PROJECT_NAME files archive not created (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
-					fi
-
-					echo -n "${reset}"
-					echo
-
-					if [ "$ARCHIVE" -eq 1 ]; then
-						# remove old files from cloud
-						if [ -n "$LAST_BACKUP_FILES" ]; then
-							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
-							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
-
-								for FILE in $LAST_BACKUP_FILES; do
-									s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; filename: ${FILE})"
-								done
-							fi
-						fi
-
-						# upload new files to cloud
-						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
-
-						UPLOAD_FAIL=0
-
-						if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-						elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-						fi
-
-						if [ "$UPLOAD_FAIL" -eq 0 ]; then
+						if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
-
-							NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
-
-							echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 						else
 							echo -n "${red}[fail]"
 						fi
 
 						echo -n "${reset}"
 						echo
+					fi
 
-						# cleanup
-						rm "$ARCHIVE_PATH"*
-					else
-						echo "Try lower compress ratio."
+					if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
+						# get last backup files list
+						if [[ -f "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}" ]]; then
+							LAST_BACKUP_FILES=$(cat "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}")
+						else
+							LAST_BACKUP_FILES=
+						fi
+
+						# archiving
+
+						ARCHIVE_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")/"${PROJECT_NAME}_files_${PERIOD}.7z"
+
+						echo -n "Archiving..."
+
+						EXCLUDE_7Z=""
+						EXCLUDE_RELATIVE_7Z=""
+
+						# exclude folders
+						if [ -n "$EXCLUDE" ]; then
+							EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$EXCLUDE" | sed 's/\ /\ -xr!/g')
+						fi
+
+						if [ -n "$EXCLUDE_RELATIVE" ]; then
+							EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+						fi
+
+						# hourly exclude folders
+						if [[ $2 == 'hourly' ]]; then
+							if [ -n "$HOURLY_EXCLUDE" ]; then
+								EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$HOURLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
+							fi
+
+							if [ -n "$HOURLY_EXCLUDE_RELATIVE" ]; then
+								EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$HOURLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+							fi
+						fi
+
+						# daily exclude folders
+						if [[ $2 == 'daily' ]]; then
+							if [ -n "$DAILY_EXCLUDE" ]; then
+								EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$DAILY_EXCLUDE" | sed 's/\ /\ -xr!/g')
+							fi
+
+							if [ -n "$DAILY_EXCLUDE_RELATIVE" ]; then
+								EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$DAILY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+							fi
+						fi
+
+						# weekly exclude folders
+						if [[ $2 == 'weekly' ]]; then
+							if [ -n "$WEEKLY_EXCLUDE" ]; then
+								EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$WEEKLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
+							fi
+
+							if [ -n "$WEEKLY_EXCLUDE_RELATIVE" ]; then
+								EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$WEEKLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+							fi
+						fi
+
+						# monthly exclude folders
+						if [[ $2 == 'monthly' ]]; then
+							if [ -n "$MONTHLY_EXCLUDE" ]; then
+								EXCLUDE_7Z="$EXCLUDE_7Z -xr!"$(echo "$MONTHLY_EXCLUDE" | sed 's/\ /\ -xr!/g')
+							fi
+
+							if [ -n "$MONTHLY_EXCLUDE_RELATIVE" ]; then
+								EXCLUDE_RELATIVE_7Z="$EXCLUDE_RELATIVE_7Z -x!$(basename "$PROJECT_FOLDER")/"$(echo "$MONTHLY_EXCLUDE_RELATIVE" | sed "s/\ /\ -x!$(basename "$PROJECT_FOLDER")\//g")
+							fi
+						fi
+
+						7z a -mx$COMPRESS_RATIO -mhe=on $SPLIT_7Z $ARCHIVE_PASS "$ARCHIVE_PATH" "$PROJECT_FOLDER" $EXCLUDE_7Z $EXCLUDE_RELATIVE_7Z > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+
+						# remove part postfix if only one part
+						if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
+							mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
+						fi
+
+						if [ -f "$ARCHIVE_PATH" ]; then
+							echo -n "${green}[OK]"
+
+							ARCHIVE=1
+						elif [ -f "${ARCHIVE_PATH}.001" ]; then
+							echo -n "${green}[OK]"
+
+							ARCHIVE=1
+						else
+							echo -n "${red}[fail]"
+
+							ARCHIVE=0
+
+							#pushToLog "[ERROR] - $PROJECT_NAME files archive not created (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+						fi
+
+						echo -n "${reset}"
+						echo
+
+						if [ "$ARCHIVE" -eq 1 ]; then
+							# remove old files from cloud
+							if [ -n "$LAST_BACKUP_FILES" ]; then
+								if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+								elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+									LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+
+									for FILE in $LAST_BACKUP_FILES; do
+										s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; filename: ${FILE})"
+									done
+								fi
+							fi
+
+							# upload new files to cloud
+							echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
+
+							UPLOAD_FAIL=0
+
+							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+							fi
+
+							if [ "$UPLOAD_FAIL" -eq 0 ]; then
+								echo -n "${green}[OK]"
+
+								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+
+								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
+							else
+								echo -n "${red}[fail]"
+							fi
+
+							echo -n "${reset}"
+							echo
+
+							# cleanup
+							rm "$ARCHIVE_PATH"*
+						else
+							echo "Try lower compress ratio."
+						fi
 					fi
 				fi
 
@@ -502,12 +518,12 @@ do
 
 			echo "# $PROJECT_NAME database backup"
 
-			MYSQL_DUMP_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")/"${PROJECT_NAME}_base_${PERIOD}.sql.gz"
-
 			pushToLog "[NOTICE] - $PROJECT_NAME database backup (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 
+			MYSQL_DUMP_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")/"${PROJECT_NAME}_base_${PERIOD}.sql.gz"
+
 			# base dumping
-			echo -n "Dump creation..."
+			echo -n "Creating database dump..."
 
 			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
 
@@ -530,8 +546,12 @@ do
 
 			if [ "$DUMP" -eq 1 ]; then
 				if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" || $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+					CLOUD_CHECK_FAIL=0
+
 					# check/create project folder in cloud (webdav)
 					if [[ $CLOUD_PROTO == "webdav" ]]; then
+						echo -n "Checking cloud..."
+
 						CHECK_FILE=$(echo "$TMP_PATH" | sed "s/\/$//g")"/check_folder_in_cloud"
 
 						touch "$CHECK_FILE"
@@ -539,94 +559,105 @@ do
 						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}/" 2>&1 >/dev/null)
 
 						if [ -n "$CLOUD_FOLDER_CHECK" ]; then
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"; CLOUD_CHECK_FAIL=1; }
 						else
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
 						fi
 
 						rm "$CHECK_FILE"
-					fi
 
-					# get last backup files list
-					if [ -f "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}" ]; then
-						LAST_BACKUP_FILES=$(cat "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}")
-					else
-						LAST_BACKUP_FILES=
-					fi
-
-					ARCHIVE_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")"/${PROJECT_NAME}_base_${PERIOD}.7z"
-
-					# archiving
-					echo -n "Archiving..."
-
-					7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS "$ARCHIVE_PATH" "$MYSQL_DUMP_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
-
-					# remove part postfix if only one part
-					if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
-						mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
-					fi
-
-					if [ -f "$ARCHIVE_PATH" ]; then
-						echo -n "${green}[OK]"
-
-						ARCHIVE=1
-					elif [ -f "${ARCHIVE_PATH}.001" ]; then
-						echo -n "${green}[OK]"
-
-						ARCHIVE=1
-					else
-						echo -n "${red}[fail]"
-
-						ARCHIVE=0
-
-						#pushToLog "[ERROR] - $PROJECT_NAME database archive not created (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
-					fi
-
-					echo -n "${reset}"
-					echo
-
-					if [ "$ARCHIVE" -eq 1 ]; then
-						# remove old files from cloud
-						if [ -n "$LAST_BACKUP_FILES" ]; then
-							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archives (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
-							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-								LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
-
-								for FILE in $LAST_BACKUP_FILES; do
-									s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; filename: ${FILE})"
-								done
-							fi
-						fi
-
-						# upload new files to cloud
-						echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
-
-						UPLOAD_FAIL=0
-
-						if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-						elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-							s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-						fi
-
-						if [ "$UPLOAD_FAIL" -eq 0 ]; then
+						if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
 							echo -n "${green}[OK]"
-
-							NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
-
-							echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
 						else
 							echo -n "${red}[fail]"
 						fi
 
 						echo -n "${reset}"
 						echo
+					fi
 
-						# cleanup
-						rm "$ARCHIVE_PATH"*
-					else
-						echo "Try lower compress ratio."
+					if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
+						# get last backup files list
+						if [ -f "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}" ]; then
+							LAST_BACKUP_FILES=$(cat "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}")
+						else
+							LAST_BACKUP_FILES=
+						fi
+
+						ARCHIVE_PATH=$(echo "$TMP_PATH" | sed "s/\/$//g")"/${PROJECT_NAME}_base_${PERIOD}.7z"
+
+						# archiving
+						echo -n "Archiving..."
+
+						7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS "$ARCHIVE_PATH" "$MYSQL_DUMP_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+
+						# remove part postfix if only one part
+						if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
+							mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
+						fi
+
+						if [ -f "$ARCHIVE_PATH" ]; then
+							echo -n "${green}[OK]"
+
+							ARCHIVE=1
+						elif [ -f "${ARCHIVE_PATH}.001" ]; then
+							echo -n "${green}[OK]"
+
+							ARCHIVE=1
+						else
+							echo -n "${red}[fail]"
+
+							ARCHIVE=0
+
+							#pushToLog "[ERROR] - $PROJECT_NAME database archive not created (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+						fi
+
+						echo -n "${reset}"
+						echo
+
+						if [ "$ARCHIVE" -eq 1 ]; then
+							# remove old files from cloud
+							if [ -n "$LAST_BACKUP_FILES" ]; then
+								if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archives (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+								elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+									LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+
+									for FILE in $LAST_BACKUP_FILES; do
+										s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; filename: ${FILE})"
+									done
+								fi
+							fi
+
+							# upload new files to cloud
+							echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
+
+							UPLOAD_FAIL=0
+
+							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+							fi
+
+							if [ "$UPLOAD_FAIL" -eq 0 ]; then
+								echo -n "${green}[OK]"
+
+								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+
+								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
+							else
+								echo -n "${red}[fail]"
+							fi
+
+							echo -n "${reset}"
+							echo
+
+							# cleanup
+							rm "$ARCHIVE_PATH"*
+						else
+							echo "Try lower compress ratio."
+						fi
 					fi
 				fi
 
