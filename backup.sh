@@ -330,14 +330,20 @@ do
 							fi
 						fi
 
-						7z a -mx$COMPRESS_RATIO -mhe=on $SPLIT_7Z $ARCHIVE_PASS "$ARCHIVE_PATH" "$PROJECT_FOLDER" $EXCLUDE_7Z $EXCLUDE_RELATIVE_7Z > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
+						ARCHIVING_FAIL=0
+
+						7z a -mx$COMPRESS_RATIO -mhe=on $SPLIT_7Z $ARCHIVE_PASS "$ARCHIVE_PATH" "$PROJECT_FOLDER" $EXCLUDE_7Z $EXCLUDE_RELATIVE_7Z > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; ARCHIVING_FAIL=1; }
 
 						# remove part postfix if only one part
 						if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
 							mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
 						fi
 
-						if [ -f "$ARCHIVE_PATH" ]; then
+						if [ "$ARCHIVING_FAIL" -eq 1 ]; then
+							echo -n "${red}[fail]"
+
+							ARCHIVE=0
+						elif [ -f "$ARCHIVE_PATH" ]; then
 							echo -n "${green}[OK]"
 
 							ARCHIVE=1
@@ -349,8 +355,6 @@ do
 							echo -n "${red}[fail]"
 
 							ARCHIVE=0
-
-							#pushToLog "[ERROR] - $PROJECT_NAME files archive not created (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 						fi
 
 						echo -n "${reset}"
@@ -393,12 +397,10 @@ do
 
 							echo -n "${reset}"
 							echo
-
-							# cleanup
-							rm "$ARCHIVE_PATH"*
-						else
-							echo "Try lower compress ratio."
 						fi
+
+						# cleanup
+						rm "$ARCHIVE_PATH"* > /dev/null 2>/dev/null
 					fi
 				fi
 
@@ -589,14 +591,20 @@ do
 						# archiving
 						echo -n "Archiving..."
 
-						7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS "$ARCHIVE_PATH" "$MYSQL_DUMP_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+						ARCHIVING_FAIL=0
+
+						7z a -mx$COMPRESS_RATIO -mhe=on$SPLIT_7Z$ARCHIVE_PASS "$ARCHIVE_PATH" "$MYSQL_DUMP_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while creating $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; ARCHIVING_FAIL=1; }
 
 						# remove part postfix if only one part
 						if [[ $(ls "$ARCHIVE_PATH".* 2>/dev/null | wc -l) -eq 1 ]]; then
 							mv "${ARCHIVE_PATH}.001" "$ARCHIVE_PATH"
 						fi
 
-						if [ -f "$ARCHIVE_PATH" ]; then
+						if [ "$ARCHIVING_FAIL" -eq 1 ]; then
+							echo -n "${red}[fail]"
+
+							ARCHIVE=0
+						elif [ -f "$ARCHIVE_PATH" ]; then
 							echo -n "${green}[OK]"
 
 							ARCHIVE=1
@@ -608,8 +616,6 @@ do
 							echo -n "${red}[fail]"
 
 							ARCHIVE=0
-
-							#pushToLog "[ERROR] - $PROJECT_NAME database archive not created (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 						fi
 
 						echo -n "${reset}"
@@ -654,9 +660,7 @@ do
 							echo
 
 							# cleanup
-							rm "$ARCHIVE_PATH"*
-						else
-							echo "Try lower compress ratio."
+							rm "$ARCHIVE_PATH"* > /dev/null 2>/dev/null
 						fi
 					fi
 				fi
