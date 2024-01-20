@@ -22,19 +22,20 @@ Automatic backups your web projects bases (MySQL/MariaDB) and files to the cloud
 - **MYSQL_PASS** - MySQL/MariaDB user password;
 - **CLOUD_USER** - login for your cloud (for WebDAV);
 - **CLOUD_PASS** - password for your cloud user (for WebDAV);
-- **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: `https://webdav.yandex.ru/Backups/`) or path to S3 spacename (ex.: `s3://myspacename`)
-- **CLOUD_PROTO** - cloud protocol (`webdav` or `s3` or `ssh`, default value is `webdav` if empty or undefined)
-- **CLOUD_SSH_HOST** - hostname/IP and port of backup server separated by colon (for ssh; ex.: `123.123.123.123`, `123.123.123.123:2222`, `hostname.com:4444`)
-- **CLOUD_SSH_HOST_USER** - system username of backup server (for ssh)
-- **CLOUD_SSH_HOST_PATH** - full path to backups dir on backups server (for ssh, projects dirs will be created automatically) 
-- **TMP_PATH** - path for temporary files on server (ex.: `/tmp/`)
-- **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.)
-- **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`)
-- **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`)
-- **\<PERIOD\>_EXCLUDE** - spaces separated folders to exclude for specific backup period (ex.: `DAILY_EXCLUDE="uploads"`)
-- **\<PERIOD\>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`)
-- **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`)
-- **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set)
+- **CLOUD_PATH** - full path to cloud folder for WebDAV (ex.: `https://webdav.yandex.ru/Backups/`) or path to S3 spacename (ex.: `s3://myspacename`);
+- **CLOUD_PROTO** - cloud protocol (`webdav` or `s3` or `ssh`, default value is `webdav` if empty or undefined);
+- **CLOUD_SSH_HOST** - hostname/IP and port of backup server separated by colon (for ssh; ex.: `123.123.123.123`, `123.123.123.123:2222`, `hostname.com:4444`);
+- **CLOUD_SSH_HOST_USER** - system username of backup server (for ssh);
+- **CLOUD_SSH_HOST_PATH** - full path to backups dir on backups server (for ssh, projects dirs will be created automatically) ;
+- **TMP_PATH** - path for temporary files on server (ex.: `/tmp/`);
+- **GLOBAL_ARCHIVE_PASS** - global password for created archives (if project password set to `false` it will be used this password. if project password set to `false` and this password set to `false` password not set to project archive.);
+- **EXCLUDE** - spaces separated folders to exclude (supports wildcard in folders names, ex.: `EXCLUDE=".svn .git *cache*"`);
+- **EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces (supports wildcard in paths to folders, ex.: `EXCLUDE_RELATIVE="wp-content/cache templates/*_temp"`);
+- **\<PERIOD\>_EXCLUDE** - spaces separated folders to exclude for specific backup period (ex.: `DAILY_EXCLUDE="uploads"`);
+- **\<PERIOD\>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`);
+- **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`);
+- **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set);
+- **SCRIPT_LOG_PATH** - full path for logs (directory must be exists and current user must be have permissions for write into it; logging disabled if path not setted).
 
 Note: relative and not relative lists will be united if using ssh proto.
 
@@ -171,9 +172,9 @@ If you want receive script result to email add below to the top of crontab list 
 - [ ] add support for others database types backup
 - [x] ~~add support for partitioning archives into specified size~~
 - [x] ~~add automatically checking/creating folders in cloud~~
-- [ ] add logging with rotation
+- [x] ~~add logging with rotation~~
 - [ ] validating vars from config file
-- [ ] add full support for some special characters, spaces and non latin characters in file names and paths
+- [x] ~~add full support for some special characters, spaces and non latin characters in file names and paths~~
 - [ ] add ability to backup files and databases to own archive
 - [ ] add functionality for restore from backups
 - [ ] add support for local backup to mounted clouds disks
@@ -184,6 +185,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 13.01.2024 - 1.8.0 - added support for logging, escaping values of sensitive vars, refactoring
 - 21.07.2023 - 1.7.0 - [added support for backups via rsync](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
 - 14.03.2022 - 1.6.2 - [added new parameters to mysqldump command](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2) + gzip compression
 - 17.12.2020 - 1.6.1 - fixed archive filename for hourly backup period
