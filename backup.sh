@@ -369,7 +369,7 @@ do
 									echo -n "Removing old archives from cloud..."
 
 									if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-										curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
+										curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE1 "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
 									elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
 										LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
 
@@ -404,6 +404,7 @@ do
 
 								echo -n "${reset}"
 								echo
+							fi
 						fi
 
 						# cleanup
