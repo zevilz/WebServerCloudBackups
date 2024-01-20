@@ -172,7 +172,7 @@ If you want receive script result to email add below to the top of crontab list 
 - [ ] add support for others database types backup
 - [x] ~~add support for partitioning archives into specified size~~
 - [x] ~~add automatically checking/creating folders in cloud~~
-- [x] ~~add logging with rotation~~
+- [x] ~~add logging~~
 - [ ] validating vars from config file
 - [x] ~~add full support for some special characters, spaces and non latin characters in file names and paths~~
 - [ ] add ability to backup files and databases to own archive
