@@ -361,42 +361,49 @@ do
 						echo
 
 						if [ "$ARCHIVE" -eq 1 ]; then
+							CLOUD_OLD_ARCHIVES_REMOVE_FAIL=0
+
 							# remove old files from cloud
 							if [ -n "$LAST_BACKUP_FILES" ]; then
-								if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
-								elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-									LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+								if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]] || [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+									echo -n "Removing old archives from cloud..."
 
-									for FILE in $LAST_BACKUP_FILES; do
-										s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; filename: ${FILE})"
-									done
+									if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+										curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archives (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
+									elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+										LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+
+										for FILE in $LAST_BACKUP_FILES; do
+											s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; filename: ${FILE})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
+										done
+									fi
 								fi
 							fi
 
-							# upload new files to cloud
-							echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
+							if [ "$CLOUD_OLD_ARCHIVES_REMOVE_FAIL" -eq 0 ]; then
+								# upload new files to cloud
+								echo -n "Uploading via ${CLOUD_PROTO_PROJECT_FILES}..."
 
-							UPLOAD_FAIL=0
+								UPLOAD_FAIL=0
 
-							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-							fi
+								if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
+									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
+									s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								fi
 
-							if [ "$UPLOAD_FAIL" -eq 0 ]; then
-								echo -n "${green}[OK]"
+								if [ "$UPLOAD_FAIL" -eq 0 ]; then
+									echo -n "${green}[OK]"
 
-								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+									NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
 
-								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
-							else
-								echo -n "${red}[fail]"
-							fi
+									echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
+								else
+									echo -n "${red}[fail]"
+								fi
 
-							echo -n "${reset}"
-							echo
+								echo -n "${reset}"
+								echo
 						fi
 
 						# cleanup
@@ -622,42 +629,50 @@ do
 						echo
 
 						if [ "$ARCHIVE" -eq 1 ]; then
+							CLOUD_OLD_ARCHIVES_REMOVE_FAIL=0
+
 							# remove old files from cloud
 							if [ -n "$LAST_BACKUP_FILES" ]; then
-								if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archives (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
-								elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-									LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+								if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]] || [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+									echo -n "Removing old archives from cloud..."
 
-									for FILE in $LAST_BACKUP_FILES; do
-										s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; filename: ${FILE})"
-									done
+									if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+										curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "$LAST_BACKUP_FILES" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archives (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
+									elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+										LAST_BACKUP_FILES=$(echo "$LAST_BACKUP_FILES" | sed 's/,/ /g')
+
+										for FILE in $LAST_BACKUP_FILES; do
+											s3cmd rm "$FILE" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove $PROJECT_NAME old database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; filename: ${FILE})"; CLOUD_OLD_ARCHIVES_REMOVE_FAIL=1; }
+										done
+									fi
 								fi
 							fi
 
-							# upload new files to cloud
-							echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
+							if [ "$CLOUD_OLD_ARCHIVES_REMOVE_FAIL" -eq 0 ]; then
+								# upload new files to cloud
+								echo -n "Uploading via ${CLOUD_PROTO_PROJECT_DB}..."
 
-							UPLOAD_FAIL=0
+								UPLOAD_FAIL=0
 
-							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
-							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
+									curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
+									s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								fi
+
+								if [ "$UPLOAD_FAIL" -eq 0 ]; then
+									echo -n "${green}[OK]"
+
+									NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+
+									echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
+								else
+									echo -n "${red}[fail]"
+								fi
+
+								echo -n "${reset}"
+								echo
 							fi
-
-							if [ "$UPLOAD_FAIL" -eq 0 ]; then
-								echo -n "${green}[OK]"
-
-								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
-
-								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
-							else
-								echo -n "${red}[fail]"
-							fi
-
-							echo -n "${reset}"
-							echo
 
 							# cleanup
 							rm "$ARCHIVE_PATH"* > /dev/null 2>/dev/null
