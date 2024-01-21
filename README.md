@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.7.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.8.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.0)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
 ## Requirements
