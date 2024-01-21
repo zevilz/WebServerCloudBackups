@@ -185,7 +185,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
-- 13.01.2024 - 1.8.0 - added support for logging, escaping values of sensitive vars, refactoring
+- 21.01.2024 - 1.8.0 - added logging, escaping values of sensitive vars, refactoring, bugfixes
 - 21.07.2023 - 1.7.0 - [added support for backups via rsync](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
 - 14.03.2022 - 1.6.2 - [added new parameters to mysqldump command](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2) + gzip compression
 - 17.12.2020 - 1.6.1 - fixed archive filename for hourly backup period
