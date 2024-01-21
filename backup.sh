@@ -36,13 +36,19 @@ SCRIPT_ERRORS_TMP="/tmp/wscb.tmp.${SCRIPT_INSTANCE_KEY}"
 
 if [ "Z$(ps o comm="" -p $(ps o ppid="" -p $$))" == "Zcron" -o \
      "Z$(ps o comm="" -p $(ps o ppid="" -p $(ps o ppid="" -p $$)))" == "Zcron" ]; then
-	red=
-	green=
-	reset=
+	SETCOLOR_SUCCESS=
+	SETCOLOR_FAILURE=
+	SETCOLOR_NORMAL=
+	SETCOLOR_GREY=
+	BOLD_TEXT=
+	NORMAL_TEXT=
 else
-	red=$(tput setf 4)
-	green=$(tput setf 2)
-	reset=$(tput sgr0)
+	SETCOLOR_SUCCESS="echo -en \\033[1;32m"
+	SETCOLOR_FAILURE="echo -en \\033[1;31m"
+	SETCOLOR_NORMAL="echo -en \\033[0;39m"
+	SETCOLOR_GREY="echo -en \\033[0;2m"
+	BOLD_TEXT=$(tput bold)
+	NORMAL_TEXT=$(tput sgr0)
 fi
 
 if [ -n "$SCRIPT_LOG_PATH" ]; then
@@ -52,7 +58,9 @@ fi
 if [[ $# -lt 2 ]]; then
 	pushToLog "[ERROR] - Wrong number of parameters"
 
+	$SETCOLOR_FAILURE
 	echo "Wrong number of parameters!"
+	$SETCOLOR_NORMAL
 	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 
 	exit 1
@@ -61,7 +69,9 @@ fi
 if [[ $1 != "files" && $1 != "bases" ]]; then
 	pushToLog "[ERROR] - Wrong backup type set"
 
+	$SETCOLOR_FAILURE
 	echo "Wrong backup type set!"
+	$SETCOLOR_NORMAL
 	echo "Type must be set to \"files\" or \"bases\""
 
 	exit 1
@@ -70,7 +80,9 @@ fi
 if [[ $2 != "hourly" && $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
 	pushToLog "[ERROR] - Wrong period set"
 
+	$SETCOLOR_FAILURE
 	echo "Wrong period set!"
+	$SETCOLOR_NORMAL
 	echo "Period must be set to \"hourly\" or \"daily\" or \"weekly\" or \"monthly\""
 
 	exit 1
@@ -80,7 +92,9 @@ if [ -n "$3" ]; then
 	if [[ $3 != 0 && $3 != 1 && $3 != 3 && $3 != 5 && $3 != 7 && $3 != 9 ]]; then
 		pushToLog "[ERROR] - Wrong compression ratio set"
 
+		$SETCOLOR_FAILURE
 		echo "Wrong compression ratio set!"
+		$SETCOLOR_NORMAL
 		echo "Compression ratio must be set to 0|1|3|5|7|9 (5 by default)"
 
 		exit 1
@@ -95,7 +109,9 @@ if [ -n "$4" ]; then
 	if [[ $4 != "webdav" && $4 != "s3" && $4 != "ssh" ]]; then
 		pushToLog "[ERROR] - Wrong protocol set"
 
+		$SETCOLOR_FAILURE
 		echo "Wrong protocol set!"
+		$SETCOLOR_NORMAL
 		echo "Protocol must be set to webdav|s3|ssh (all protocols enabled by default)"
 
 		exit 1
@@ -113,7 +129,9 @@ fi
 if [[ "$CLOUD_PROTO" != "webdav" && "$CLOUD_PROTO" != "s3" && "$CLOUD_PROTO" != "ssh" ]]; then
 	pushToLog "[ERROR] - Wrong cloud protocol given"
 
+	$SETCOLOR_FAILURE
 	echo "Wrong cloud protocol given!"
+	$SETCOLOR_NORMAL
 	echo "Protocol must be set to webdav, s3 or ssh (webdav by default)"
 
 	exit 1
@@ -224,7 +242,7 @@ do
 			# remove proto
 			PROJECT_FOLDER=$(echo "$PROJECT_FOLDER" | awk -F ':' '{print $1}')
 
-			echo "# $PROJECT_NAME files backup"
+			echo "${BOLD_TEXT}# $PROJECT_NAME files backup${NORMAL_TEXT}"
 
 			pushToLog "[NOTICE] - $PROJECT_NAME files backup (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 
@@ -251,13 +269,14 @@ do
 						rm "$CHECK_FILE"
 
 						if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 						fi
-
-						echo -n "${reset}"
-						echo
 					fi
 
 					if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
@@ -340,25 +359,30 @@ do
 						fi
 
 						if [ "$ARCHIVING_FAIL" -eq 1 ]; then
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=0
 						elif [ -f "$ARCHIVE_PATH" ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=1
 						elif [ -f "${ARCHIVE_PATH}.001" ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=1
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=0
 						fi
-
-						echo -n "${reset}"
-						echo
 
 						if [ "$ARCHIVE" -eq 1 ]; then
 							# remove old files from cloud
@@ -379,13 +403,14 @@ do
 									fi
 
 									if [ "$CLOUD_OLD_ARCHIVES_REMOVE_FAIL" -eq 0 ]; then
-										echo -n "${green}[OK]"
+										$SETCOLOR_SUCCESS
+										echo "[OK]"
+										$SETCOLOR_NORMAL
 									else
-										echo -n "${red}[fail]"
+										$SETCOLOR_FAILURE
+										echo "[FAIL]"
+										$SETCOLOR_NORMAL
 									fi
-
-									echo -n "${reset}"
-									echo
 								fi
 							fi
 
@@ -401,17 +426,18 @@ do
 							fi
 
 							if [ "$UPLOAD_FAIL" -eq 0 ]; then
-								echo -n "${green}[OK]"
+								$SETCOLOR_SUCCESS
+								echo "[OK]"
+								$SETCOLOR_NORMAL
 
 								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
 
 								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 							else
-								echo -n "${red}[fail]"
+								$SETCOLOR_FAILURE
+								echo "[FAIL]"
+								$SETCOLOR_NORMAL
 							fi
-
-							echo -n "${reset}"
-							echo
 						fi
 
 						# cleanup
@@ -471,25 +497,30 @@ do
 						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 
 						if [ "$UPLOAD_FAIL" -eq 0 ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 						fi
-
-						echo -n "${reset}"
-						echo
 
 						rm -f "$RSYNC_EXCLUDE_LIST_FILE"
 					else
 						pushToLog "[ERROR] - Project $PROJECT_NAME files proto is ssh, but CLOUD_HOST not defined (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 
+						$SETCOLOR_FAILURE
 						echo "Project files proto is ssh, but CLOUD_HOST not defined!"
+						$SETCOLOR_NORMAL
 					fi
 				fi
 			else
 				pushToLog "[ERROR] - Project $PROJECT_NAME folder not found (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"
 
+				$SETCOLOR_FAILURE
 				echo "Project folder not found!"
+				$SETCOLOR_NORMAL
 			fi
 
 			echo
@@ -524,7 +555,7 @@ do
 			# remove proto
 			PROJECT_DB=$(echo "$PROJECT_DB" | awk -F ':' '{print $1}')
 
-			echo "# $PROJECT_NAME database backup"
+			echo "${BOLD_TEXT}# $PROJECT_NAME database backup${NORMAL_TEXT}"
 
 			pushToLog "[NOTICE] - $PROJECT_NAME database backup (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 
@@ -539,19 +570,20 @@ do
 			DUMP_ERRORS=$(echo "$DUMP_ERRORS" | grep -v 'Forcing protocol to' 2>&1)
 
 			if [ -z "$DUMP_ERRORS" ]; then
-				echo -n "${green}[OK]"
+				$SETCOLOR_SUCCESS
+				echo "[OK]"
+				$SETCOLOR_NORMAL
 
 				DUMP=1
 			else
-				echo -n "${red}[fail]"
+				$SETCOLOR_FAILURE
+				echo "[FAIL]"
+				$SETCOLOR_NORMAL
 
 				DUMP=0
 
 				pushToLog "[ERROR] - Can't create project $PROJECT_NAME database dump (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 			fi
-
-			echo -n "${reset}"
-			echo
 
 			if [ "$DUMP" -eq 1 ]; then
 				if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" || $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
@@ -576,13 +608,14 @@ do
 						rm "$CHECK_FILE"
 
 						if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 						fi
-
-						echo -n "${reset}"
-						echo
 					fi
 
 					if [ "$CLOUD_CHECK_FAIL" -eq 0 ]; then
@@ -608,25 +641,30 @@ do
 						fi
 
 						if [ "$ARCHIVING_FAIL" -eq 1 ]; then
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=0
 						elif [ -f "$ARCHIVE_PATH" ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=1
 						elif [ -f "${ARCHIVE_PATH}.001" ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=1
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 
 							ARCHIVE=0
 						fi
-
-						echo -n "${reset}"
-						echo
 
 						if [ "$ARCHIVE" -eq 1 ]; then
 							# remove old files from cloud
@@ -647,13 +685,14 @@ do
 									fi
 
 									if [ "$CLOUD_OLD_ARCHIVES_REMOVE_FAIL" -eq 0 ]; then
-										echo -n "${green}[OK]"
+										$SETCOLOR_SUCCESS
+										echo "[OK]"
+										$SETCOLOR_NORMAL
 									else
-										echo -n "${red}[fail]"
+										$SETCOLOR_FAILURE
+										echo "[FAIL]"
+										$SETCOLOR_NORMAL
 									fi
-
-									echo -n "${reset}"
-									echo
 								fi
 							fi
 
@@ -669,17 +708,18 @@ do
 							fi
 
 							if [ "$UPLOAD_FAIL" -eq 0 ]; then
-								echo -n "${green}[OK]"
+								$SETCOLOR_SUCCESS
+								echo "[OK]"
+								$SETCOLOR_NORMAL
 
 								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
 
 								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
 							else
-								echo -n "${red}[fail]"
+								$SETCOLOR_FAILURE
+								echo "[FAIL]"
+								$SETCOLOR_NORMAL
 							fi
-
-							echo -n "${reset}"
-							echo
 
 							# cleanup
 							rm "$ARCHIVE_PATH"* > /dev/null 2>/dev/null
@@ -700,17 +740,20 @@ do
 						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" "$MYSQL_DUMP_PATH" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 
 						if [ "$UPLOAD_FAIL" -eq 0 ]; then
-							echo -n "${green}[OK]"
+							$SETCOLOR_SUCCESS
+							echo "[OK]"
+							$SETCOLOR_NORMAL
 						else
-							echo -n "${red}[fail]"
+							$SETCOLOR_FAILURE
+							echo "[FAIL]"
+							$SETCOLOR_NORMAL
 						fi
-
-						echo -n "${reset}"
-						echo
 					else
 						pushToLog "[ERROR] - Project $PROJECT_NAME database proto is ssh, but CLOUD_HOST not defined (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 
+						$SETCOLOR_FAILURE
 						echo "Project db proto is ssh, but CLOUD_HOST not defined!"
+						$SETCOLOR_NORMAL
 					fi
 				fi
 			fi
