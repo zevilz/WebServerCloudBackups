@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.8.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.0)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.8.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.1)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
 ## Requirements
@@ -185,6 +185,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 27.01.2024 - 1.8.1 - [Bugfix with enabled --single-transaction mode](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.1)
 - 21.01.2024 - 1.8.0 - added logging, escaping values of sensitive vars, refactoring, bugfixes
 - 21.07.2023 - 1.7.0 - [added support for backups via rsync](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
 - 14.03.2022 - 1.6.2 - [added new parameters to mysqldump command](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.6.2) + gzip compression
