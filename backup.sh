@@ -564,10 +564,14 @@ do
 			# base dumping
 			echo -n "Creating database dump..."
 
+			DUMP_SINGLE_TRANSACTION_FAIL=0
+
 			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
 
 			DUMP_ERRORS=$(cat "$SCRIPT_ERRORS_TMP" 2>/dev/null | grep -v 'Using a password' 2>&1)
 			DUMP_ERRORS=$(echo "$DUMP_ERRORS" | grep -v 'Forcing protocol to' 2>&1)
+
+			DUMP_SINGLE_TRANSACTION_CHECK=$(echo "$DUMP_ERRORS" | grep "Table definition has changed")
 
 			if [ -z "$DUMP_ERRORS" ]; then
 				$SETCOLOR_SUCCESS
@@ -575,6 +579,15 @@ do
 				$SETCOLOR_NORMAL
 
 				DUMP=1
+			elif [ -n "$DUMP_SINGLE_TRANSACTION_CHECK" ]; then
+				$SETCOLOR_FAILURE
+				echo "[FAIL]"
+				$SETCOLOR_NORMAL
+
+				DUMP=0
+				DUMP_SINGLE_TRANSACTION_FAIL=1
+
+				pushToLog "[WARNING] - Can't create project $PROJECT_NAME database dump with enabled --single-transaction, will be trying with disabled (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
 			else
 				$SETCOLOR_FAILURE
 				echo "[FAIL]"
@@ -583,6 +596,31 @@ do
 				DUMP=0
 
 				pushToLog "[ERROR] - Can't create project $PROJECT_NAME database dump (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+			fi
+
+			if [ "$DUMP_SINGLE_TRANSACTION_FAIL" -eq 1 ]; then
+				echo -n "Creating database dump (disabled --single-transaction)..."
+
+				mysqldump --insert-ignore --skip-lock-tables --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
+
+				DUMP_ERRORS=$(cat "$SCRIPT_ERRORS_TMP" 2>/dev/null | grep -v 'Using a password' 2>&1)
+				DUMP_ERRORS=$(echo "$DUMP_ERRORS" | grep -v 'Forcing protocol to' 2>&1)
+
+				if [ -z "$DUMP_ERRORS" ]; then
+					$SETCOLOR_SUCCESS
+					echo "[OK]"
+					$SETCOLOR_NORMAL
+
+					DUMP=1
+				else
+					$SETCOLOR_FAILURE
+					echo "[FAIL]"
+					$SETCOLOR_NORMAL
+
+					DUMP=0
+
+					pushToLog "[ERROR] - Can't create project $PROJECT_NAME database dump (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"
+				fi
 			fi
 
 			if [ "$DUMP" -eq 1 ]; then
