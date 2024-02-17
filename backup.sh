@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.8.1
+# Version: 1.9.0
 
 checkFilePermissions()
 {
