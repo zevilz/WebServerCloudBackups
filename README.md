@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.8.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.1)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.9.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.9.0)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
 ## Requirements
@@ -35,7 +35,8 @@ Automatic backups your web projects bases (MySQL/MariaDB) and files to the cloud
 - **\<PERIOD\>_EXCLUDE_RELATIVE** - relative folders paths to exclude separated by spaces for specific backup period (ex.: `WEEKLY_EXCLUDE_RELATIVE="wp-content/uploads"`);
 - **SPLIT** - size of archive parts (set `false` if you don't want split archives into parts); supports `b` (bytes), `k` (kilobytes) `m` (megabytes) `g` (gigabytes) (ex.: `SPLIT="500m"`);
 - **LAST_BACKUPS_PATH** - folder for lists of last backup files (script use its for deleting old files from cloud to avoid errors and unnecessary files with splitting archives into parts; folder create automatically; this folder is in the same folder as the main script with name `last_backups` if this var not set);
-- **SCRIPT_LOG_PATH** - full path for logs (directory must be exists and current user must be have permissions for write into it; logging disabled if path not setted).
+- **SCRIPT_LOG_PATH** - full path for logs (directory must be exists and current user must be have permissions for write into it; logging disabled if path not setted);
+- **SORT_BACKUPS** (true|false) - sort backups by subdirectories in cloud (`files` for files, `databases` for databases; disabled by default).
 
 Note: relative and not relative lists will be united if using ssh proto.
 
@@ -185,6 +186,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 17.02.2024 - 1.9.0 - Added support for sorting backups by subdirectories
 - 27.01.2024 - 1.8.1 - [Bugfix with enabled --single-transaction mode](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.8.1)
 - 21.01.2024 - 1.8.0 - added logging, escaping values of sensitive vars, refactoring, bugfixes
 - 21.07.2023 - 1.7.0 - [added support for backups via rsync](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.7.0)
