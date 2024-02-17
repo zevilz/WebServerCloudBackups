@@ -29,6 +29,9 @@ pushToLog()
 
 CUR_PATH=$(dirname "$0")
 SCRIPT_LOG_PATH=
+SORT_BACKUPS=
+CLOUD_SUBDIR_FILES=
+CLOUD_SUBDIR_BASES=
 SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
 SCRIPT_ERRORS_TMP="/tmp/wscb.tmp.${SCRIPT_INSTANCE_KEY}"
 
@@ -159,6 +162,11 @@ fi
 SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
 RSYNC_EXCLUDE_LIST_FILE="${TMP_PATH}/WebServerCloudBackups.tmp.rsync_exclude.${SCRIPT_INSTANCE_KEY}"
 
+if [[ "$SORT_BACKUPS" == "true" ]]; then
+	CLOUD_SUBDIR_FILES="/files"
+	CLOUD_SUBDIR_BASES="/databases"
+fi
+
 # projects loop
 for i in "${!projects[@]}"
 do
@@ -258,12 +266,16 @@ do
 
 						touch "$CHECK_FILE"
 
-						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}/" 2>&1 >/dev/null)
+						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/" 2>&1 >/dev/null)
 
 						if [ -n "$CLOUD_FOLDER_CHECK" ]; then
 							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"; CLOUD_CHECK_FAIL=1; }
+
+							if [[ "$SORT_BACKUPS" == "true" ]]; then
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create subdirectory for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES})"; CLOUD_CHECK_FAIL=1; }
+							fi
 						else
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME files in cloud (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
 						fi
 
 						rm "$CHECK_FILE"
@@ -420,9 +432,9 @@ do
 							UPLOAD_FAIL=0
 
 							if [[ $CLOUD_PROTO_PROJECT_FILES == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 							elif [[ $CLOUD_PROTO_PROJECT_FILES == "s3" ]]; then
-								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files archive (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 							fi
 
 							if [ "$UPLOAD_FAIL" -eq 0 ]; then
@@ -430,7 +442,7 @@ do
 								echo "[OK]"
 								$SETCOLOR_NORMAL
 
-								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/"$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_FILES}/|g")
 
 								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_files_${PERIOD}"
 							else
@@ -635,12 +647,16 @@ do
 
 						touch "$CHECK_FILE"
 
-						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}/" 2>&1 >/dev/null)
+						CLOUD_FOLDER_CHECK=$(curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "$CHECK_FILE" "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/" 2>&1 >/dev/null)
 
 						if [ -n "$CLOUD_FOLDER_CHECK" ]; then
 							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "$PROJECT_CLOUD_PATH" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create directory for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH})"; CLOUD_CHECK_FAIL=1; }
+
+							if [[ "$SORT_BACKUPS" == "true" ]]; then
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X MKCOL "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't create subdirectory for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; cloud path: ${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES})"; CLOUD_CHECK_FAIL=1; }
+							fi
 						else
-							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
+							curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -X DELETE "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/check_folder_in_cloud" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Can't remove check file for $PROJECT_NAME databases in cloud (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD}; check file cloud path: ${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/check_folder_in_cloud)"; CLOUD_CHECK_FAIL=1; }
 						fi
 
 						rm "$CHECK_FILE"
@@ -740,9 +756,9 @@ do
 							UPLOAD_FAIL=0
 
 							if [[ $CLOUD_PROTO_PROJECT_DB == "webdav" ]]; then
-								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								curl -fsS --user "$CLOUD_USER":"$CLOUD_PASS" -T "{$(ls $ARCHIVE_PATH* | tr '\n' ',' | sed 's/,$//g')}" "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 							elif [[ $CLOUD_PROTO_PROJECT_DB == "s3" ]]; then
-								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+								s3cmd put $(ls "$ARCHIVE_PATH"* | tr '\n' ' ') "${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME database archive (proto: ${CLOUD_PROTO_PROJECT_DB}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 							fi
 
 							if [ "$UPLOAD_FAIL" -eq 0 ]; then
@@ -750,7 +766,7 @@ do
 								echo "[OK]"
 								$SETCOLOR_NORMAL
 
-								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,$PROJECT_CLOUD_PATH/|g")
+								NEW_BACKUP_FILES="${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}"/$(ls "$ARCHIVE_PATH"* | sed 's/.*\///g' | tr '\n' ',' | sed 's/,$//g' | sed "s|,|,${PROJECT_CLOUD_PATH}${CLOUD_SUBDIR_BASES}/|g")
 
 								echo "$NEW_BACKUP_FILES" > "${LAST_BACKUPS_PATH}/${PROJECT_NAME}_base_${PERIOD}"
 							else
