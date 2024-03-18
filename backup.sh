@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.9.0
+# Version: 1.9.1
 
 checkFilePermissions()
 {
@@ -462,36 +462,58 @@ do
 						CLOUD_SSH_PROJECT_PATH=$(echo "$CLOUD_SSH_HOST_PATH" | sed "s/\/$//g")"/${PROJECT_NAME}"
 						CLOUD_SSH_PROJECT_BACKUP_PATH="${CLOUD_SSH_PROJECT_PATH}${CLOUD_SUBDIR_FILES}/${PROJECT_NAME}_files_${PERIOD}"
 
+						RSYNC_EXCLUDE_LIST=""
+
 						# exclude folders
 						if [ -n "$EXCLUDE" ]; then
-							RSYNC_EXCLUDE_LIST="$EXCLUDE $EXCLUDE_RELATIVE"
+							RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $EXCLUDE"
+						fi
+
+						if [ -n "$EXCLUDE_RELATIVE" ]; then
+							RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $EXCLUDE_RELATIVE"
 						fi
 
 						# hourly exclude folders
 						if [[ $2 == 'hourly' ]]; then
 							if [ -n "$HOURLY_EXCLUDE" ]; then
-								RSYNC_EXCLUDE_LIST="$HOURLY_EXCLUDE $HOURLY_EXCLUDE_RELATIVE"
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $HOURLY_EXCLUDE"
+							fi
+
+							if [ -n "$HOURLY_EXCLUDE_RELATIVE" ]; then
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $HOURLY_EXCLUDE_RELATIVE"
 							fi
 						fi
 
 						# daily exclude folders
 						if [[ $2 == 'daily' ]]; then
 							if [ -n "$DAILY_EXCLUDE" ]; then
-								RSYNC_EXCLUDE_LIST="$DAILY_EXCLUDE $DAILY_EXCLUDE_RELATIVE"
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $DAILY_EXCLUDE"
+							fi
+
+							if [ -n "$DAILY_EXCLUDE_RELATIVE" ]; then
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $DAILY_EXCLUDE_RELATIVE"
 							fi
 						fi
 
 						# weekly exclude folders
 						if [[ $2 == 'weekly' ]]; then
 							if [ -n "$WEEKLY_EXCLUDE" ]; then
-								RSYNC_EXCLUDE_LIST="$WEEKLY_EXCLUDE $WEEKLY_EXCLUDE_RELATIVE"
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $WEEKLY_EXCLUDE"
+							fi
+
+							if [ -n "$WEEKLY_EXCLUDE_RELATIVE" ]; then
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $WEEKLY_EXCLUDE_RELATIVE"
 							fi
 						fi
 
 						# monthly exclude folders
 						if [[ $2 == 'monthly' ]]; then
 							if [ -n "$MONTHLY_EXCLUDE" ]; then
-								RSYNC_EXCLUDE_LIST="$MONTHLY_EXCLUDE $MONTHLY_EXCLUDE_RELATIVE"
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $MONTHLY_EXCLUDE"
+							fi
+
+							if [ -n "$MONTHLY_EXCLUDE_RELATIVE" ]; then
+								RSYNC_EXCLUDE_LIST="$RSYNC_EXCLUDE_LIST $MONTHLY_EXCLUDE_RELATIVE"
 							fi
 						fi
 
