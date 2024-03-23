@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.9.1
+# Version: 1.9.2
 
 checkFilePermissions()
 {
@@ -528,7 +528,7 @@ do
 
 						ssh -p "$CLOUD_SSH_HOST_PORT" -o batchmode=yes -o StrictHostKeyChecking=no "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}" "mkdir -p ${CLOUD_SSH_PROJECT_PATH}${CLOUD_SUBDIR_FILES}" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while creating directory for $PROJECT_NAME files (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 
-						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
+						rsync -azq -e "ssh -p $CLOUD_SSH_HOST_PORT -o batchmode=yes -o StrictHostKeyChecking=no" --exclude-from="$RSYNC_EXCLUDE_LIST_FILE" --delete --ignore-missing-args "$PROJECT_FOLDER" "${CLOUD_SSH_HOST_USER}@${CLOUD_SSH_HOST}:${CLOUD_SSH_PROJECT_BACKUP_PATH}/" > /dev/null 2>"$SCRIPT_ERRORS_TMP" || { pushToLog "[ERROR] - Error occurred while uploading $PROJECT_NAME files (proto: ${CLOUD_PROTO_PROJECT_FILES}; period: ${PERIOD})"; UPLOAD_FAIL=1; }
 
 						if [ "$UPLOAD_FAIL" -eq 0 ]; then
 							$SETCOLOR_SUCCESS
