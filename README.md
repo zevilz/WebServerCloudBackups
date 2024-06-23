@@ -121,8 +121,9 @@ Supported backup types:
 Supported periods:
 
 - `hourly` - add "hourly" mark and current hour to archive name (ex.: domain.com_base_hourly_02.7z)
-- `daily|daily_week` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
-- `daily_month` - add number of the current month day to archive name (ex.: domain.com_base_daily_05.7z)
+- `daily` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
+- `daily_week` - add number of the current week day to archive name (ex.: domain.com_base_daily_week_2.7z)
+- `daily_month` - add number of the current month day to archive name (ex.: domain.com_base_daily_month_05.7z)
 - `weekly` - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
 - `monthly` - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
 
