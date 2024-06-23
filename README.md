@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.9.2-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.9.2)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.10.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.10.0)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
 ## Requirements
@@ -121,7 +121,8 @@ Supported backup types:
 Supported periods:
 
 - `hourly` - add "hourly" mark and current hour to archive name (ex.: domain.com_base_hourly_02.7z)
-- `daily` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
+- `daily|daily_week` - add number and name of the current week day to archive name (ex.: domain.com_files_5_Friday.7z)
+- `daily_month` - add number of the current month day to archive name (ex.: domain.com_base_daily_05.7z)
 - `weekly` - add "weekly" mark to archive name (ex.: domain.com_files_weekly.7z)
 - `monthly` - add "monthly" mark to archive name (ex.: domain.com_files_monthly.7z)
 
@@ -186,6 +187,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 23.06.2024 - 1.10.0 - Added support for daily backups for each day of month
 - 23.03.2024 - 1.9.2 - Added `--ignore-missing-args` to rsync for suppress vanished files warnings
 - 18.03.2024 - 1.9.1 - Fixed files exclusion with ssh protocol
 - 17.02.2024 - 1.9.0 - Added support for sorting backups by subdirectories
