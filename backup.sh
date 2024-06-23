@@ -143,8 +143,10 @@ fi
 # period time postfix
 if [[ $2 == "hourly" ]]; then
 	PERIOD="$2"_$(date +"%H")
-elif [[ $2 == "daily" || $2 == "daily_week" ]]; then
+elif [[ $2 == "daily" ]]; then
 	PERIOD=$(date +"%u")_$(date +"%A")
+elif [[ $2 == "daily_week" ]]; then
+	PERIOD="$2"_$(date +"%u")
 elif [[ $2 == "daily_month" ]]; then
 	PERIOD="$2"_$(date +"%d")
 else
