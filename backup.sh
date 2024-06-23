@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.9.2
+# Version: 1.10.0
 
 checkFilePermissions()
 {
@@ -64,7 +64,7 @@ if [[ $# -lt 2 ]]; then
 	$SETCOLOR_FAILURE
 	echo "Wrong number of parameters!"
 	$SETCOLOR_NORMAL
-	echo "Usage: bash $0 files|bases hourly|daily|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
+	echo "Usage: bash $0 files|bases hourly|daily|daily_week|daily_month|weekly|monthly 0|1|3|5|7|9(optional) webdav|s3|ssh(optional)"
 
 	exit 1
 fi
@@ -80,13 +80,13 @@ if [[ $1 != "files" && $1 != "bases" ]]; then
 	exit 1
 fi
 
-if [[ $2 != "hourly" && $2 != "daily" && $2 != "weekly" && $2 != "monthly" ]]; then
+if [[ $2 != "hourly" && $2 != "daily" && $2 != "daily_week" && $2 != "daily_month" && $2 != "weekly" && $2 != "monthly" ]]; then
 	pushToLog "[ERROR] - Wrong period set"
 
 	$SETCOLOR_FAILURE
 	echo "Wrong period set!"
 	$SETCOLOR_NORMAL
-	echo "Period must be set to \"hourly\" or \"daily\" or \"weekly\" or \"monthly\""
+	echo "Period must be set to \"hourly\" or \"daily\" or \"daily_week\" or \"daily_month\" or \"weekly\" or \"monthly\""
 
 	exit 1
 fi
@@ -143,8 +143,10 @@ fi
 # period time postfix
 if [[ $2 == "hourly" ]]; then
 	PERIOD="$2"_$(date +"%H")
-elif [[ $2 == "daily" ]]; then
+elif [[ $2 == "daily" || $2 == "daily_week" ]]; then
 	PERIOD=$(date +"%u")_$(date +"%A")
+elif [[ $2 == "daily_month" ]]; then
+	PERIOD="$2"_$(date +"%d")
 else
 	PERIOD="$2"
 fi
