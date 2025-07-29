@@ -3,7 +3,7 @@
 # URL: https://github.com/zevilz/WebServerCloudBackups
 # Author: zEvilz
 # License: MIT
-# Version: 1.10.0
+# Version: 1.10.1
 
 checkFilePermissions()
 {
@@ -34,6 +34,7 @@ CLOUD_SUBDIR_FILES=
 CLOUD_SUBDIR_BASES=
 SCRIPT_INSTANCE_KEY=$(tr -cd 'a-zA-Z0-9' < /dev/urandom | head -c 10)
 SCRIPT_ERRORS_TMP="/tmp/wscb.tmp.${SCRIPT_INSTANCE_KEY}"
+MYSQLDUMP="mysqldump"
 
 . "${CUR_PATH}/backup.conf"
 
@@ -169,6 +170,10 @@ RSYNC_EXCLUDE_LIST_FILE="${TMP_PATH}/WebServerCloudBackups.tmp.rsync_exclude.${S
 if [[ "$SORT_BACKUPS" == "true" ]]; then
 	CLOUD_SUBDIR_FILES="/files"
 	CLOUD_SUBDIR_BASES="/databases"
+fi
+
+if command -v mariadb-dump >/dev/null 2>&1; then
+	MYSQLDUMP="mariadb-dump"
 fi
 
 # projects loop
@@ -604,7 +609,7 @@ do
 
 			DUMP_SINGLE_TRANSACTION_FAIL=0
 
-			mysqldump --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
+			$MYSQLDUMP --insert-ignore --skip-lock-tables --single-transaction=TRUE --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
 
 			DUMP_ERRORS=$(cat "$SCRIPT_ERRORS_TMP" 2>/dev/null | grep -v 'Using a password' 2>&1)
 			DUMP_ERRORS=$(echo "$DUMP_ERRORS" | grep -v 'Forcing protocol to' 2>&1)
@@ -639,7 +644,7 @@ do
 			if [ "$DUMP_SINGLE_TRANSACTION_FAIL" -eq 1 ]; then
 				echo -n "Creating database dump (disabled --single-transaction)..."
 
-				mysqldump --insert-ignore --skip-lock-tables --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
+				$MYSQLDUMP --insert-ignore --skip-lock-tables --add-drop-table --no-tablespaces -u "$MYSQL_USER" --password="$MYSQL_PASS" "$PROJECT_DB" 2>"$SCRIPT_ERRORS_TMP" | gzip > "$MYSQL_DUMP_PATH"
 
 				DUMP_ERRORS=$(cat "$SCRIPT_ERRORS_TMP" 2>/dev/null | grep -v 'Using a password' 2>&1)
 				DUMP_ERRORS=$(echo "$DUMP_ERRORS" | grep -v 'Forcing protocol to' 2>&1)
