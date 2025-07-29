@@ -1,4 +1,4 @@
-# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.10.0-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.10.0)
+# WebServerCloudBackups [![Version](https://img.shields.io/badge/version-v1.10.1-brightgreen.svg)](https://github.com/zevilz/WebServerCloudBackups/releases/tag/1.10.1)
 Automatic backups your web projects bases (MySQL/MariaDB) and files to the clouds via WebDAV or Amazon S3 and to backup servers via SSH (rsync). Supports setting passwords for archives (WebDav/S3) and excluding specified folders.
 
 ## Requirements
@@ -132,7 +132,7 @@ Supported compress ratio:
 - `0` - without compression
 - `1` - fastest
 - `3` - fast
-- `5` - normal (default) 
+- `5` - normal (default)
 - `7` - maximum
 - `9` - ultra
 
@@ -188,6 +188,7 @@ If you want receive script result to email add below to the top of crontab list 
 Changelog
 ---------
 
+- 29.07.2025 - 1.10.1 - Added support for mariadb-dump instead of mysqldump wich deprecated in MariaDB 11.0.1
 - 23.06.2024 - 1.10.0 - Added support for daily backups for each day of month
 - 23.03.2024 - 1.9.2 - Added `--ignore-missing-args` to rsync for suppress vanished files warnings
 - 18.03.2024 - 1.9.1 - Fixed files exclusion with ssh protocol
